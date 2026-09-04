@@ -25,4 +25,4 @@ This first compiles Debug and then publishes a self-contained `win-x64` Release 
 
 NVIDIA profile automation, HAGS, third-party overlays, display VRR, Startup impact, and cleanup estimation are intentionally manual/unsupported in v1.0 because the project does not use unsupported driver interfaces or destructive bulk actions.
 
-The executable has not been code signed. Sign the Release executable with your organization’s code-signing certificate before external distribution.
+
