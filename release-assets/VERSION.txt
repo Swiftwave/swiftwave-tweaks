@@ -1,0 +1,5 @@
+Swiftwave Tweaks
+Version: 1.0.0
+Target: Windows 11 x64
+Runtime: .NET 8 self-contained single-file publish
+Signing: Unsigned

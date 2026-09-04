@@ -1,0 +1,72 @@
+<Window x:Class="SwiftwaveTweaks.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework" Title="Swiftwave Tweaks" Width="1160" Height="780" MinWidth="940" MinHeight="640" WindowStartupLocation="CenterScreen" WindowStyle="None" Background="#0B101A" Foreground="#F5F8FC">
+  <shell:WindowChrome.WindowChrome>
+    <shell:WindowChrome CaptionHeight="52" ResizeBorderThickness="7" GlassFrameThickness="1" CornerRadius="0" UseAeroCaptionButtons="False"/>
+  </shell:WindowChrome.WindowChrome>
+  <Window.Resources>
+    <CubicEase x:Key="SoftEase" EasingMode="EaseOut"/><CubicEase x:Key="SmoothEase" EasingMode="EaseInOut"/>
+    <Storyboard x:Key="WaveMotion" RepeatBehavior="Forever" AutoReverse="True"><DoubleAnimation Storyboard.TargetName="WaveTranslate" Storyboard.TargetProperty="X" From="-28" To="28" Duration="0:0:10"/><DoubleAnimation Storyboard.TargetName="WaveTranslate" Storyboard.TargetProperty="Y" From="-15" To="15" Duration="0:0:12"/></Storyboard>
+    <Storyboard x:Key="WelcomeIn"><DoubleAnimation Storyboard.TargetName="WelcomePrompt" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.65" BeginTime="0:0:0.35" EasingFunction="{StaticResource SoftEase}"/><DoubleAnimation Storyboard.TargetName="PromptTranslate" Storyboard.TargetProperty="Y" To="0" Duration="0:0:0.7" BeginTime="0:0:0.35" EasingFunction="{StaticResource SoftEase}"/><DoubleAnimation Storyboard.TargetName="WelcomeName" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.7" BeginTime="0:0:1.05" EasingFunction="{StaticResource SoftEase}"/><DoubleAnimation Storyboard.TargetName="NameScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.7" BeginTime="0:0:1.05" EasingFunction="{StaticResource SoftEase}"/><DoubleAnimation Storyboard.TargetName="NameScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.7" BeginTime="0:0:1.05" EasingFunction="{StaticResource SoftEase}"/></Storyboard>
+    <Storyboard x:Key="WelcomeOut"><DoubleAnimation Storyboard.TargetName="WelcomeCopy" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.45" EasingFunction="{StaticResource SmoothEase}"/><DoubleAnimation Storyboard.TargetName="WelcomeCopy" Storyboard.TargetProperty="RenderTransform.ScaleX" To="1.015" Duration="0:0:0.45" EasingFunction="{StaticResource SmoothEase}"/><DoubleAnimation Storyboard.TargetName="WelcomeCopy" Storyboard.TargetProperty="RenderTransform.ScaleY" To="1.015" Duration="0:0:0.45" EasingFunction="{StaticResource SmoothEase}"/></Storyboard>
+    <Storyboard x:Key="BusyPulse" RepeatBehavior="Forever"><DoubleAnimation Storyboard.TargetName="Dot1" Storyboard.TargetProperty="Opacity" From="0.25" To="1" Duration="0:0:0.55" AutoReverse="True"/><DoubleAnimation Storyboard.TargetName="Dot2" Storyboard.TargetProperty="Opacity" From="0.25" To="1" Duration="0:0:0.55" BeginTime="0:0:0.18" AutoReverse="True"/><DoubleAnimation Storyboard.TargetName="Dot3" Storyboard.TargetProperty="Opacity" From="0.25" To="1" Duration="0:0:0.55" BeginTime="0:0:0.36" AutoReverse="True"/></Storyboard>
+  </Window.Resources>
+  <Grid x:Name="Root">
+    <Grid x:Name="AppShell">
+      <Grid.RowDefinitions><RowDefinition Height="52"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+      <Grid x:Name="HeaderBar" Background="Transparent">
+        <TextBlock VerticalAlignment="Center" Margin="19,1,0,0" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="15.5" AutomationProperties.Name="swiftwave tweaks"><Run Foreground="#F0F6FB" FontWeight="SemiBold" Text="s&#x200A;w&#x200A;i&#x200A;f&#x200A;t&#x200A;w&#x200A;a&#x200A;v&#x200A;e"/><Run Foreground="#7E93A9" FontWeight="Normal" Text=" t&#x200A;w&#x200A;e&#x200A;a&#x200A;k&#x200A;s&#x200A;."/></TextBlock>
+        <StackPanel x:Name="CaptionButtons" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,9,0"/>
+      </Grid>
+      <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="238"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Border Background="#101926" Padding="18,8,18,16">
+        <DockPanel>
+          <Grid x:Name="NavLayer" DockPanel.Dock="Top">
+              <Border x:Name="NavHighlight" Height="0" Background="#87A0B8" Opacity="0.18" CornerRadius="8" VerticalAlignment="Top" IsHitTestVisible="False" RenderTransformOrigin="0,0"><Border.RenderTransform><TranslateTransform x:Name="NavShift"/></Border.RenderTransform></Border>
+              <ListBox x:Name="Navigation" SelectionChanged="NavigationChanged" Background="Transparent" BorderThickness="0" SelectedIndex="0">
+                <ListBoxItem Content="Dashboard"/>
+                <ListBoxItem Content="Recommended"/>
+                <ListBoxItem Content="Gaming"/>
+                <ListBoxItem Content="NVIDIA"/>
+                <ListBoxItem Content="Power"/>
+                <ListBoxItem Content="Storage"/>
+                <ListBoxItem Content="Network"/>
+                <ListBoxItem Content="Startup"/>
+                <ListBoxItem Content="Cleanup"/>
+                <ListBoxItem Content="Diagnostics"/>
+                <ListBoxItem Content="History &amp; Restore"/>
+                <ListBoxItem Content="Settings"/>
+              </ListBox>
+            </Grid>
+          <TextBlock DockPanel.Dock="Bottom" Text="Safe. Reversible. Verified." Foreground="#657A90" TextWrapping="Wrap"/>
+        </DockPanel>
+      </Border>
+      <Grid Grid.Column="1" Margin="30,8,30,16">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal">
+          <TextBlock x:Name="PageTitle" Text="Dashboard" FontSize="28" FontWeight="SemiBold"><TextBlock.RenderTransform><TranslateTransform x:Name="TitleShift" Y="0"/></TextBlock.RenderTransform></TextBlock>
+          <TextBlock x:Name="AdminStatus" Margin="18,10,0,0" Foreground="#8CA0B5"/>
+        </StackPanel>
+        <Grid Grid.Row="1" Margin="0,20,0,10">
+          <ContentControl x:Name="PageHost" HorizontalContentAlignment="Stretch"/>
+        </Grid>
+        <DockPanel Grid.Row="2" LastChildFill="False">
+          <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+            <Grid x:Name="BusyDots" Width="16" Height="6" Margin="0,1,8,0" Visibility="Collapsed" VerticalAlignment="Center">
+              <Ellipse x:Name="Dot1" Width="5" Height="5" Fill="#4CC2FF" HorizontalAlignment="Left" Opacity="0.25"/>
+              <Ellipse x:Name="Dot2" Width="5" Height="5" Fill="#4CC2FF" HorizontalAlignment="Center" Opacity="0.25"/>
+              <Ellipse x:Name="Dot3" Width="5" Height="5" Fill="#4CC2FF" HorizontalAlignment="Right" Opacity="0.25"/>
+            </Grid>
+            <TextBlock x:Name="StatusText" Foreground="#8CA0B5" Text="Ready." TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+          </StackPanel>
+          <TextBlock x:Name="VersionText" DockPanel.Dock="Right" Foreground="#4C5F75" Text="v1.0.0"/>
+        </DockPanel>
+      </Grid>
+      </Grid>
+    </Grid>
+    <Grid x:Name="WelcomeOverlay" Background="#0B101A" Panel.ZIndex="10"><Grid.Clip><RectangleGeometry Rect="0,0,1600,1000"/></Grid.Clip>
+      <Ellipse Width="800" Height="500" Opacity="0.16" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-210,-145"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#287FC0" Offset="0"/><GradientStop Color="#00203B" Offset="0.42"/><GradientStop Color="Transparent" Offset="1"/></RadialGradientBrush></Ellipse.Fill><Ellipse.RenderTransform><TranslateTransform x:Name="WaveTranslate"/></Ellipse.RenderTransform></Ellipse>
+      <Ellipse Width="620" Height="400" Opacity="0.11" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-220,-130,0,0"><Ellipse.Fill><RadialGradientBrush><GradientStop Color="#5B4AC9" Offset="0"/><GradientStop Color="Transparent" Offset="0.72"/></RadialGradientBrush></Ellipse.Fill></Ellipse>
+      <StackPanel x:Name="WelcomeCopy" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-18,0,0" RenderTransformOrigin="0.5,0.5"><StackPanel.RenderTransform><ScaleTransform/></StackPanel.RenderTransform><TextBlock x:Name="WelcomePrompt" Text="welcome to" FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="27" FontWeight="Light" Foreground="#AFC0D1" Opacity="0" HorizontalAlignment="Center"><TextBlock.RenderTransform><TranslateTransform x:Name="PromptTranslate" Y="12"/></TextBlock.RenderTransform></TextBlock><TextBlock x:Name="WelcomeName" Text="swiftwave tweaks." FontFamily="Segoe UI Variable Display, Segoe UI" FontSize="52" FontWeight="SemiBold" Foreground="#F5FAFF" Opacity="0" Margin="0,7,0,0" HorizontalAlignment="Center" RenderTransformOrigin="0.5,0.5"><TextBlock.RenderTransform><ScaleTransform x:Name="NameScale" ScaleX="0.965" ScaleY="0.965"/></TextBlock.RenderTransform></TextBlock></StackPanel>
+    </Grid>
+  </Grid>
+</Window>

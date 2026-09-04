@@ -1,0 +1,122 @@
+<Application x:Class="SwiftwaveTweaks.App" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" StartupUri="MainWindow.xaml">
+  <Application.Resources>
+
+    <!-- Buttons: smooth hover / pressed / disabled transitions, rounded, consistent. -->
+    <Style TargetType="Button">
+      <Setter Property="Margin" Value="0,0,10,0"/>
+      <Setter Property="Padding" Value="14,8"/>
+      <Setter Property="Background" Value="#1C2A3B"/>
+      <Setter Property="Foreground" Value="#F5F8FC"/>
+      <Setter Property="BorderBrush" Value="#31455D"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="HorizontalContentAlignment" Value="Center"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid>
+              <Border x:Name="Bd" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="7"/>
+              <Border x:Name="HoverFill" Background="#2E4259" CornerRadius="6" Opacity="0" Margin="1"/>
+              <Border x:Name="PressFill" Background="#0D1622" CornerRadius="6" Opacity="0" Margin="1"/>
+              <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="False" SnapsToDevicePixels="True"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Trigger.EnterActions>
+                  <BeginStoryboard>
+                    <Storyboard>
+                      <DoubleAnimation Storyboard.TargetName="HoverFill" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12"/>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                  <BeginStoryboard>
+                    <Storyboard>
+                      <DoubleAnimation Storyboard.TargetName="HoverFill" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.12"/>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </Trigger.ExitActions>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Trigger.EnterActions>
+                  <BeginStoryboard>
+                    <Storyboard>
+                      <DoubleAnimation Storyboard.TargetName="PressFill" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.05"/>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                  <BeginStoryboard>
+                    <Storyboard>
+                      <DoubleAnimation Storyboard.TargetName="PressFill" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.15"/>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </Trigger.ExitActions>
+              </Trigger>
+              <Trigger Property="IsEnabled" Value="False">
+                <Setter Property="Opacity" Value="0.45"/>
+                <Setter Property="Foreground" Value="#7E90A3"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <!-- Navigation items: transparent chrome (the moving highlight shows selection),
+         soft hover fill and animated foreground colour. -->
+    <Style TargetType="ListBoxItem">
+      <Setter Property="Foreground" Value="#B8C5D4"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="SnapsToDevicePixels" Value="True"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Grid>
+              <Border x:Name="HoverFill" Background="#22FFFFFF" CornerRadius="8" Opacity="0"/>
+              <ContentPresenter Margin="12,9" VerticalAlignment="Center"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Trigger.EnterActions>
+                  <BeginStoryboard>
+                    <Storyboard>
+                      <DoubleAnimation Storyboard.TargetName="HoverFill" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.12"/>
+                      <ColorAnimation Storyboard.TargetProperty="Foreground.Color" To="#E4EDF6" Duration="0:0:0.12"/>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                  <BeginStoryboard>
+                    <Storyboard>
+                      <DoubleAnimation Storyboard.TargetName="HoverFill" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.12"/>
+                      <ColorAnimation Storyboard.TargetProperty="Foreground.Color" To="#B8C5D4" Duration="0:0:0.12"/>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </Trigger.ExitActions>
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Trigger.EnterActions>
+                  <BeginStoryboard>
+                    <Storyboard>
+                      <ColorAnimation Storyboard.TargetProperty="Foreground.Color" To="#F5F8FC" Duration="0:0:0.15"/>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </Trigger.EnterActions>
+                <Trigger.ExitActions>
+                  <BeginStoryboard>
+                    <Storyboard>
+                      <ColorAnimation Storyboard.TargetProperty="Foreground.Color" To="#B8C5D4" Duration="0:0:0.15"/>
+                    </Storyboard>
+                  </BeginStoryboard>
+                </Trigger.ExitActions>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+  </Application.Resources>
+</Application>
