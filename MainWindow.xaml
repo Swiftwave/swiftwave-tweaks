@@ -1,4 +1,4 @@
-<Window x:Class="SwiftwaveTweaks.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework" Title="Swiftwave Tweaks" Width="1160" Height="780" MinWidth="940" MinHeight="640" WindowStartupLocation="CenterScreen" WindowStyle="None" Background="#0B101A" Foreground="#F5F8FC">
+Window x:Class="SwiftwaveTweaks.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework" Title="Swiftwave Tweaks" Width="1160" Height="780" MinWidth="940" MinHeight="640" WindowStartupLocation="CenterScreen" WindowStyle="None" Background="#0B101A" Foreground="#F5F8FC">
   <shell:WindowChrome.WindowChrome>
     <shell:WindowChrome CaptionHeight="52" ResizeBorderThickness="7" GlassFrameThickness="1" CornerRadius="0" UseAeroCaptionButtons="False"/>
   </shell:WindowChrome.WindowChrome>
@@ -58,7 +58,7 @@
             </Grid>
             <TextBlock x:Name="StatusText" Foreground="#8CA0B5" Text="Ready." TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
           </StackPanel>
-          <TextBlock x:Name="VersionText" DockPanel.Dock="Right" Foreground="#4C5F75" Text="v1.0.0"/>
+          <TextBlock x:Name="VersionText" DockPanel.Dock="Right" Foreground="#4C5F75"/>
         </DockPanel>
       </Grid>
       </Grid>

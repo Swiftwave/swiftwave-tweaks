@@ -116,6 +116,11 @@ public static class OptimizationCatalog
         // machines without a capable wired adapter, and the Network page hides that card.
         list.Add(new NetworkPowerSavingOptimization());
 
+        // Fortnite specific optimizations: per-user, fully hidden Startup watcher that
+        // excludes logical CPU 0 from the Fortnite process affinity. Category="Gaming"
+        // so it renders on the Gaming page under the General section.
+        list.Add(new FortniteAffinityOptimization());
+
         // Windows Debloat: only the ContentDeliveryManager suggestion surfaces are
         // automated — they have a safe, documented, HKCU, per-feature, reversible mechanism.
         // Background-activity reduction, preinstalled-app background control, and the broad

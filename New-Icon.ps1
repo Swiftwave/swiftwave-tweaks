@@ -1,10 +1,10 @@
-# Generates GameReadyOptimizer\Assets\GameReady.ico: a multi-size icon with the
+# Generates Assets\GameReady.ico: a multi-size icon with the
 # "swiftwave" brand mark — dark rounded square, two soft wave strokes (near-white
 # over muted gray). Entries are stored as PNG blobs (supported on Vista+).
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
-$iconPath = Join-Path $PSScriptRoot 'GameReadyOptimizer\Assets\GameReady.ico'
+$iconPath = Join-Path $PSScriptRoot 'Assets\GameReady.ico'
 New-Item (Split-Path $iconPath) -ItemType Directory -Force | Out-Null
 
 $sizes = 16, 24, 32, 48, 64, 128, 256
