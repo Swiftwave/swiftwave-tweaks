@@ -1,4 +1,4 @@
-# GameReady Optimizer
+# swiftwave tweaks.
 
 Windows 11 desktop utility for conservative gaming-PC onboarding. The project intentionally favors supported Windows interfaces, verification, auditability, and reversibility over aggressive "booster" behavior.
 
