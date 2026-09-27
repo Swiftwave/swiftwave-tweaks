@@ -1,0 +1,26 @@
+name: Deploy MSI to GitHub Pages
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+      - name: Download MSI from v2 release
+        run: |
+          mkdir -p 2.0.0
+          curl -fL -o "2.0.0/SwiftwaveTweaks-2.0.0-x64.msi" \
+            "https://github.com/Swiftwave/swiftwave-tweaks/releases/download/v2/SwiftwaveTweaks-2.0.0-x64.msi"
+          ls -la "2.0.0/"
+      - name: Commit MSI to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "2.0.0/SwiftwaveTweaks-2.0.0-x64.msi"
+          git commit -m "Add MSI for Microsoft Store package hosting"
+          git push origin gh-pages
