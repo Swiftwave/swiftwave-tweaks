@@ -1,26 +1,112 @@
 name: Deploy MSI to GitHub Pages
+
+# Mirrors *.msi assets from a GitHub Release onto the gh-pages branch at a
+# versioned, DIRECT (no-redirect) URL suitable for Microsoft Partner Center:
+#   https://swiftwave.github.io/swiftwave-tweaks/<version>/<file>.msi
+#
+# Immutability rules (enforced by this workflow AND by release-store.ps1):
+#   * A versioned file that already exists on gh-pages is NEVER overwritten.
+#   * To ship a new build, publish a new release tag (e.g. v2.0.1) and bump the
+#     package version; the new file lands at /2.0.1/... and the old URL stays
+#     byte-for-byte unchanged, as Microsoft certification requires.
+#
+# Triggers:
+#   release:published -> every *.msi asset on the release is mirrored; the
+#                        version path is the tag with a leading 'v' stripped.
+#   workflow_dispatch -> mirror one explicitly named asset from any release tag.
+
 on:
+  release:
+    types: [published]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag containing the MSI asset (e.g. v2.0.1)'
+        required: true
+        type: string
+      version:
+        description: 'Version path segment on GitHub Pages (e.g. 2.0.1)'
+        required: true
+        type: string
+      asset:
+        description: 'MSI asset file name in that release'
+        required: true
+        type: string
+
 permissions:
   contents: write
+
+concurrency:
+  group: pages-msi-sync
+
 jobs:
-  deploy:
+  sync:
     runs-on: ubuntu-latest
     steps:
+      - name: Resolve MSI assets to sync
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          : > "$RUNNER_TEMP/msis.json"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+            jq -c '.assets[] | select(.name | endswith(".msi")) | {name, browser_download_url}' \
+              "${{ github.event_path }}" > "$RUNNER_TEMP/msis.json"
+          else
+            TAG="${{ github.event.inputs.tag }}"
+            VERSION="${{ github.event.inputs.version }}"
+            ASSET="${{ github.event.inputs.asset }}"
+            curl -fsSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              "${{ github.api_url }}/repos/${{ github.repository }}/releases/tags/$TAG" \
+              | jq -c --arg a "$ASSET" '.assets[] | select(.name == $a) | {name, browser_download_url}' \
+              > "$RUNNER_TEMP/msis.json"
+          fi
+          echo "tag=$TAG"         >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          COUNT=$(wc -l < "$RUNNER_TEMP/msis.json")
+          echo "found=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "Release tag: $TAG | Pages version: $VERSION | MSI assets: $COUNT"
+          cat "$RUNNER_TEMP/msis.json"
+
       - name: Checkout gh-pages branch
+        if: steps.resolve.outputs.found != '0'
         uses: actions/checkout@v4
         with:
           ref: gh-pages
-      - name: Download MSI from v2 release
+
+      - name: Mirror MSIs to versioned Pages path (immutable)
+        if: steps.resolve.outputs.found != '0'
         run: |
-          mkdir -p 2.0.0
-          curl -fL -o "2.0.0/SwiftwaveTweaks-2.0.0-x64.msi" \
-            "https://github.com/Swiftwave/swiftwave-tweaks/releases/download/v2/SwiftwaveTweaks-2.0.0-x64.msi"
-          ls -la "2.0.0/"
-      - name: Commit MSI to gh-pages
-        run: |
+          set -euo pipefail
+          VERSION="${{ steps.resolve.outputs.version }}"
+          mkdir -p "$VERSION"
+          while IFS= read -r row; do
+            NAME=$(printf '%s' "$row" | jq -r '.name')
+            URL=$(printf '%s' "$row" | jq -r '.browser_download_url')
+            TARGET="$VERSION/$NAME"
+            if [ -e "$TARGET" ]; then
+              echo "::error::$TARGET already exists on gh-pages. Published package URLs are immutable - publish a new version instead."
+              exit 2
+            fi
+            curl -fL --retry 3 -o "$TARGET" "$URL"
+            # OLE2 compound document magic (MSI/CAB container): D0 CF 11 E0 A1 B1 1A E1
+            MAGIC=$(head -c 8 "$TARGET" | od -An -tx1 | tr -d ' \n')
+            if [ "$MAGIC" != "d0cf11e0a1b11ae1" ]; then
+              echo "::error::Downloaded $NAME is not a valid MSI/OLE file (magic=$MAGIC)"
+              exit 3
+            fi
+            echo "Mirrored $NAME -> $TARGET ($(stat -c%s "$TARGET") bytes)"
+          done < "$RUNNER_TEMP/msis.json"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "2.0.0/SwiftwaveTweaks-2.0.0-x64.msi"
-          git commit -m "Add MSI for Microsoft Store package hosting"
+          git add -- "$VERSION"/*.msi
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git commit -m "Publish MSI $VERSION to GitHub Pages [skip ci]"
           git push origin gh-pages
