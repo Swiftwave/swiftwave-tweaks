@@ -120,7 +120,7 @@ public sealed class VisualEffectsOptimization : Optimization
             static string? GetStr(JsonElement el, string n) => el.TryGetProperty(n, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
             if (GetInt(e, "fx") is int fx) RegHelper.WriteDword(RegistryHive.CurrentUser, VisFxKey, "VisualFXSetting", fx);
             int? ma = GetInt(e, "minAnimate");
-            string? mas = GetStr(e, "minAnimate");
+            string? mas = GetStr(e, "minAnimateStr");
             if (ma is int) RegHelper.WriteString(RegistryHive.CurrentUser, WmKey, "MinAnimate", ma!.Value.ToString());
             else if (mas is not null) RegHelper.WriteString(RegistryHive.CurrentUser, WmKey, "MinAnimate", mas);
             if (GetInt(e, "taskbar") is int t) RegHelper.WriteDword(RegistryHive.CurrentUser, VisFxKey, "TaskbarAnimations", t);

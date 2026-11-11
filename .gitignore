@@ -1,0 +1,8 @@
+bin/
+obj/
+release/
+store-artifacts/
+upgrade-test/
+.screenshots/
+*.user
+*.suo

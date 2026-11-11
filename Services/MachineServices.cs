@@ -41,7 +41,6 @@ public static class DisplayService
     [DllImport("user32.dll", CharSet = CharSet.Unicode)]
     private static extern bool EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE devMode);
     private const int ENUM_CURRENT_SETTINGS = -1;
-    private const int ENUM_REGISTRY_SETTINGS = -2;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct DEVMODE
@@ -106,6 +105,28 @@ public static class DisplayService
 
 public static class RestorePointService
 {
+    private static int _sessionAttempted; // 0 = not yet attempted this session, otherwise already handled
+
+    /// <summary>
+    /// Best-effort system restore point before the first elevated mutation of the session.
+    /// Runs at most once per process (reentrant calls from the restore-point creation itself
+    /// are skipped by the flag), never throws, and never blocks the caller on failure —
+    /// a disabled System Protection is logged, not fatal.
+    /// </summary>
+    public static void EnsureSessionRestorePoint()
+    {
+        if (System.Threading.Interlocked.Exchange(ref _sessionAttempted, 1) != 0) return;
+        try
+        {
+            var (ok, msg) = TryCreate("Swiftwave Tweaks");
+            SafeLog.Write(ok ? "Session restore point: " + msg : "Session restore point skipped: " + msg);
+        }
+        catch (Exception ex)
+        {
+            SafeLog.Write("Session restore point failed.", ex);
+        }
+    }
+
     /// <summary>Attempts to create a system restore point. Returns a truthful outcome; never pretends success.</summary>
     public static (bool Success, string Message) TryCreate(string description)
     {

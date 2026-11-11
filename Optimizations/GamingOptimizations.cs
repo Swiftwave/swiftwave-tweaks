@@ -12,9 +12,6 @@ public abstract class HkcuDwordOptimization : Optimization
     protected abstract int TargetValue { get; }
     protected abstract string StateDescription(int? value);
 
-    private int? _previous;
-    private string _previousJson = "{}";
-
     public override Safety Safety => Safety.Safe;
     public override bool RequiresAdmin => false;
     public override bool RequiresRestart => false;
@@ -28,9 +25,8 @@ public abstract class HkcuDwordOptimization : Optimization
 
     protected override string CapturePrevious()
     {
-        _previous = RegHelper.ReadDword(RegistryHive.CurrentUser, RegistryView.Default, KeyPath, ValueName);
-        _previousJson = JsonSerializer.Serialize(new { value = _previous });
-        return _previousJson;
+        var prev = RegHelper.ReadDword(RegistryHive.CurrentUser, RegistryView.Default, KeyPath, ValueName);
+        return JsonSerializer.Serialize(new { value = prev });
     }
 
     protected override bool ApplyChange(out string detail)
@@ -88,13 +84,12 @@ public sealed class GameDvrOptimization : HkcuDwordOptimization
 
     public override Detection Detect()
     {
-        var d = base.Detect();
-        if (d.State == OptState.Optimized)
-        {
-            int? policy = RegHelper.ReadDword(RegistryHive.LocalMachine, RegistryView.Registry64, PolicyPath, PolicyName);
-            if (policy == 0) return new Detection(OptState.Optimized, "Disabled (enforced by system policy)", true, "");
-        }
-        return d;
+        // HKLM policy disables Game DVR regardless of the user value — the effective
+        // behavior is already off, so report Optimized instead of inviting a no-op toggle.
+        int? policy = RegHelper.ReadDword(RegistryHive.LocalMachine, RegistryView.Registry64, PolicyPath, PolicyName);
+        if (policy == 0)
+            return new Detection(OptState.Optimized, "Disabled (enforced by system policy)", true, "");
+        return base.Detect();
     }
 }
 
@@ -124,6 +119,16 @@ public sealed class GameModeOptimization : HkcuDwordOptimization
     protected override int TargetValue => 1;
     protected override string StateDescription(int? value) =>
         value is null ? "Enabled (Windows default)" : value == 1 ? "Enabled" : "Disabled";
+
+    public override Detection Detect()
+    {
+        // An absent value means Game Mode is at its Windows default, which is enabled —
+        // nothing needs attention, so report Optimized instead of a misleading warning.
+        int? v = RegHelper.ReadDword(RegistryHive.CurrentUser, RegistryView.Default, KeyPath, ValueName);
+        if (v is null)
+            return new Detection(OptState.Optimized, "Enabled (Windows default)", true, "");
+        return base.Detect();
+    }
 }
 
 /// <summary>Hardware-accelerated GPU scheduling (HAGS) toggle with restart requirement and honest expectations.</summary>

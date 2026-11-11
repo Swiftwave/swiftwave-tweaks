@@ -1,4 +1,4 @@
-# swiftwave tweaks.
+# Swiftwave Tweaks
 
 Windows 11 desktop utility for conservative gaming-PC onboarding. The project intentionally favors supported Windows interfaces, verification, auditability, and reversibility over aggressive "booster" behavior.
 
@@ -17,12 +17,14 @@ This first compiles Debug and then publishes a self-contained `win-x64` Release 
 - WMI/CIM-style hardware, memory, graphics, storage, Windows, and active power-plan detection.
 - High-performance/Ultimate Performance activation with previous power-plan rollback.
 - Game DVR policy disablement with an elevation prompt and activity history.
+- NVIDIA Power Management Mode automation through the documented NVAPI Driver Settings interface, with exact prior-state rollback.
+- HAGS enablement through an explicit, elevated registry write with independent verification.
 - Local logs, error containment, and rollback records under `%LOCALAPPDATA%`.
 - Explicit manual/unsupported states instead of unsafe registry or GUI automation.
-- A replayable Swiftwave Tweaks welcome animation with persisted startup preference and reduced-motion fallback.
+- A welcome animation on startup (it plays on every launch) with a reduced-motion fallback; preferences such as start-minimized and close-to-tray are persisted.
 
 ## Current boundary
 
-NVIDIA profile automation, HAGS, third-party overlays, display VRR, Startup impact, and cleanup estimation are intentionally manual/unsupported in v1.1 because the project does not use unsupported driver interfaces or destructive bulk actions.
+Third-party overlays, display VRR, BIOS-level features (XMP/EXPO, Resizable BAR), driver updates, and CPU overclocking remain intentionally manual — they are surfaced as guidance in Diagnostics instead of being changed by the app, because the project does not use unsupported driver interfaces or destructive bulk actions.
 
 The executable has not been code signed. Sign the Release executable with your organization’s code-signing certificate before external distribution.

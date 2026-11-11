@@ -18,6 +18,8 @@ public sealed record SystemSnapshot(
     int CpuThreads,
     string GpuName,
     string GpuDriver,
+    string MotherboardVendor,
+    string MotherboardModel,
     bool HasNvidia,
     double MemoryGb,
     IReadOnlyList<RamModule> RamModules,
@@ -33,29 +35,6 @@ public sealed record SystemSnapshot(
     int ProcessCount)
 {
     public string WindowsLine => $"{WindowsEdition} {WindowsVersion} (build {WindowsBuild})";
-
-    public string ToDisplayText()
-    {
-        var ram = RamModules.Count == 0
-            ? $"{MemoryGb:N0} GB total"
-            : $"{MemoryGb:N0} GB total across {RamModules.Count} module(s)\n" +
-              string.Join("\n", RamModules.Select(m =>
-                  $"  {m.Slot}: {m.CapacityGb:N0} GB @ {m.ConfiguredSpeedMts?.ToString() ?? "?"} MT/s" +
-                  (m.SpeedMts is int rated && m.ConfiguredSpeedMts is int cfg && cfg < rated ? $" (rated {rated} MT/s)" : "")));
-        var drives = Drives.Count == 0 ? "No fixed drives detected." : string.Join("\n", Drives.Select(d =>
-            $"  {d.Letter} {d.VolumeLabel,-12} {d.BusKind,-5} {d.FreeGb,6:N0} GB free of {d.SizeGb,6:N0} GB — {d.Model}"));
-        var monitors = Monitors.Count == 0 ? "Display information unavailable." : string.Join("\n", Monitors.Select(m =>
-            $"  {m.Device}: {m.Width}x{m.Height} @ {m.CurrentHz} Hz" + (m.MaxHzAtCurrentRes > m.CurrentHz ? $" (supports up to {m.MaxHzAtCurrentRes} Hz)" : "")));
-        return
-            $"Windows\n  {WindowsLine}\n\n" +
-            $"Processor\n  {CpuName} — {CpuCores} cores / {CpuThreads} threads\n\n" +
-            $"Graphics\n  {GpuName}\n  Driver {GpuDriver}\n\n" +
-            $"Memory\n  {ram}\n\n" +
-            $"Displays\n  {monitors}\n\n" +
-            $"Active power plan\n  {PowerPlan}\n\n" +
-            $"Storage\n{drives}\n\n" +
-            $"Processes running\n  {ProcessCount}";
-    }
 }
 
 public static class SystemDetector
@@ -113,6 +92,10 @@ public static class SystemDetector
             gpuDriver = $"{gpuDriver} ({gpuDate ?? "driver date unavailable"})";
         bool hasNvidia = gpuName.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase);
 
+        var board = WmiAll("SELECT Manufacturer, Product FROM Win32_BaseBoard").FirstOrDefault();
+        string boardVendor = board?["Manufacturer"]?.ToString()?.Trim() ?? "";
+        string boardModel = board?["Product"]?.ToString()?.Trim() ?? "";
+
         var modules = WmiAll("SELECT BankLabel, Capacity, Speed, ConfiguredClockSpeed FROM Win32_PhysicalMemory")
             .Select(m => new RamModule(
                 m["BankLabel"]?.ToString() ?? "?",
@@ -145,7 +128,7 @@ public static class SystemDetector
             cpu,
             int.TryParse(Wmi("SELECT NumberOfCores FROM Win32_Processor", "NumberOfCores", "0"), out var cores) ? cores : 0,
             int.TryParse(Wmi("SELECT NumberOfLogicalProcessors FROM Win32_Processor", "NumberOfLogicalProcessors", "0"), out var threads) ? threads : 0,
-            gpuName, gpuDriver, hasNvidia,
+            gpuName, gpuDriver, boardVendor, boardModel, hasNvidia,
             totalGb, modules, drives,
             planName, planGuid, monitors,
             hags, gameDvr, dvrPolicy, gameBar, gameMode,

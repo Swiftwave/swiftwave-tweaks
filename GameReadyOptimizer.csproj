@@ -10,15 +10,25 @@
     <ApplicationIcon>Assets\GameReady.ico</ApplicationIcon>
     <AssemblyName>SwiftwaveTweaks</AssemblyName>
     <RootNamespace>SwiftwaveTweaks</RootNamespace>
-    <Version>2.0.0</Version>
-    <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.0.0.0</FileVersion>
+    <Version>3.0.0</Version>
+    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+    <FileVersion>3.0.0.0</FileVersion>
+    <!-- Keep ProductVersion exactly 3.0.0 even when built from a Git checkout. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>Swiftwave Tweaks</Product>
+    <Company>Swiftwave</Company>
+    <AssemblyTitle>Swiftwave Tweaks</AssemblyTitle>
+    <Copyright>Copyright (c) Swiftwave</Copyright>
     <Description>Windows 11 Performance &amp; Optimization Utility</Description>
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- No .pdb beside the published exe: the deliverable is exactly one file. -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Management" Version="8.0.0" />
@@ -26,5 +36,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets\GameReady.ico" />
+    <!-- Embedded, not copied: the published exe must not need an Assets folder. -->
+    <EmbeddedResource Include="Assets\Swiftwave-Ultimate-Performance.pow">
+      <LogicalName>SwiftwaveTweaks.Assets.Swiftwave-Ultimate-Performance.pow</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

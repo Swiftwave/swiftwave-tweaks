@@ -58,11 +58,18 @@ public static class CleanupService
                         try { Directory.Delete(d, true); } catch { failed++; }
                     double after = MeasureDir(path);
                     double reclaimed = Math.Max(0, before - after);
-                    bool ok = reclaimed > 0 || failed > 0; // in-use files legitimately block deletion
+                    // Success requires actually reclaiming something, or completing with nothing
+                    // (and no item) blocked. Everything skipped while nothing was reclaimed is a
+                    // truthful failure, not a success.
+                    bool ok = reclaimed > 0 || failed == 0;
                     SafeLog.Write($"Cleanup user-temp: {reclaimed:N1} MB reclaimed, {failed} items skipped");
-                    return (ok, reclaimed, ok
-                        ? $"{reclaimed:N1} MB reclaimed; {failed} in-use item(s) left in place."
-                        : "Nothing to remove.");
+                    if (reclaimed > 0)
+                        return (true, reclaimed, failed > 0
+                            ? $"{reclaimed:N1} MB reclaimed; {failed} in-use item(s) left in place."
+                            : $"{reclaimed:N1} MB reclaimed.");
+                    return (ok, 0, failed == 0
+                        ? "Nothing to remove."
+                        : $"Nothing could be removed; {failed} in-use item(s) left in place.");
                 }
                 case "windows-temp":
                 {
@@ -84,9 +91,22 @@ public static class CleanupService
                     var before = MeasureRecycleBin();
                     var r = ProcessRunner.RunPowerShell("Clear-RecycleBin -Force -ErrorAction SilentlyContinue");
                     var after = MeasureRecycleBin();
-                    double reclaimed = Math.Max(0, before - after);
+                    bool measurable = before >= 0 && after >= 0; // MeasureRecycleBin returns -1 on failure
+                    double reclaimed = measurable ? Math.Max(0, before - after) : 0;
+                    if (r.ExitCode != 0)
+                    {
+                        SafeLog.Write("Cleanup recycle-bin: Clear-RecycleBin failed.");
+                        return (false, reclaimed, "Clearing the Recycle Bin failed" +
+                            (measurable ? $"; {reclaimed:N1} MB remains." : " and its size could not be measured."));
+                    }
+                    if (!measurable)
+                    {
+                        SafeLog.Write("Cleanup recycle-bin: cleared; size measurement unavailable.");
+                        return (true, 0, "Cleared, but the Recycle Bin size could not be measured before and after.");
+                    }
                     SafeLog.Write($"Cleanup recycle-bin: {reclaimed:N1} MB reclaimed");
-                    return (r.ExitCode == 0 && reclaimed > 0, reclaimed, reclaimed > 0 ? $"{reclaimed:N1} MB reclaimed." : "The Recycle Bin was already empty.");
+                    return (reclaimed > 0 || before <= 0, reclaimed,
+                        reclaimed > 0 ? $"{reclaimed:N1} MB reclaimed." : "The Recycle Bin was already empty.");
                 }
                 default:
                     return (false, 0, "Unknown cleanup category.");
@@ -99,10 +119,11 @@ public static class CleanupService
         }
     }
 
+    /// <summary>Measured size in MB, or -1 when the measurement itself failed (ambiguous with an empty bin).</summary>
     private static double MeasureRecycleBin()
     {
         var r = ProcessRunner.RunPowerShell(
             "(New-Object -ComObject Shell.Application).Namespace(0xA).Items() | ForEach-Object { $_.ExtendedProperty('System.Size') } | Measure-Object -Sum | ForEach-Object { [math]::Round($_.Sum/1MB,1) }");
-        return r.ExitCode == 0 && double.TryParse(r.Output.Trim(), System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : 0;
+        return r.ExitCode == 0 && double.TryParse(r.Output.Trim(), System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : -1;
     }
 }

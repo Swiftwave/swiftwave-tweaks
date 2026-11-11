@@ -16,6 +16,14 @@ public sealed record ApplyResult(ApplyStatus Status, string Message, string? Det
 /// </summary>
 public abstract class Optimization
 {
+    /// <summary>
+    /// Serialises every apply/rollback process-wide. Without it a preset run and a card
+    /// toggle could apply the same optimization concurrently, racing shared instance state
+    /// and letting one operation's rollback record overwrite the other's in RollbackStore.
+    /// Apply/Rollback run on thread-pool threads, so blocking here is acceptable.
+    /// </summary>
+    private static readonly object ApplyGate = new();
+
     public abstract string Id { get; }
     public abstract string Name { get; }
     public abstract string Description { get; }
@@ -41,6 +49,8 @@ public abstract class Optimization
 
     public ApplyResult Apply()
     {
+        lock (ApplyGate)
+        {
         var before = Detect();
         switch (before.State)
         {
@@ -90,10 +100,13 @@ public abstract class Optimization
         RollbackStore.Add(new RollbackItem(Id, Name, previous, DateTimeOffset.Now));
         SafeLog.Write($"Applied and verified: {Id} (was: {before.CurrentState})");
         return new ApplyResult(ApplyStatus.Applied, "Applied and independently verified.", after.CurrentState, RequiresRestart);
+        }
     }
 
     public ApplyResult Rollback(string previousState)
     {
+        lock (ApplyGate)
+        {
         try
         {
             if (Revert(previousState, out var detail))
@@ -108,6 +121,7 @@ public abstract class Optimization
         {
             SafeLog.Write($"Rollback threw: {Id}", ex);
             return new ApplyResult(ApplyStatus.Failed, "Failed — rollback threw an exception.", ex.Message);
+        }
         }
     }
 }

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <!--
+    Swiftwave Tweaks - Microsoft Store (MSI/EXE program) installer.
+    Per-machine x64 MSI. Fully silent with /qn (required by Store certification).
+    ProductVersion follows the app's 3.0 versioning; MSI ignores the 4th field.
+  -->
+  <Package Name="Swiftwave Tweaks"
+           Manufacturer="Swiftwave"
+           Version="3.0.0"
+           Scope="perMachine"
+           Language="1033"
+           Codepage="1252"
+           UpgradeCode="85F27C20-60F1-4CEC-AE28-B36F3A7A56F4">
+
+    <MajorUpgrade Schedule="afterInstallInitialize"
+                DowngradeErrorMessage="A newer version of Swiftwave Tweaks is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="AppIcon" SourceFile="Assets\GameReady.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/Swiftwave/swiftwave-tweaks" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/Swiftwave/swiftwave-tweaks/issues" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="ManufacturerFolder" Name="Swiftwave">
+        <Directory Id="INSTALLFOLDER" Name="Swiftwave Tweaks">
+          <Component Id="MainExecutable" Guid="6A1F3D2B-7C4E-4B9A-9E1F-2A8C5D6E7B01">
+            <File Id="SwiftwaveTweaksExe"
+                  Name="SwiftwaveTweaks.exe"
+                  Source="release\SwiftwaveTweaks.exe"
+                  KeyPath="yes" />
+          </Component>
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppProgramsFolder" Name="Swiftwave">
+        <Component Id="StartMenuShortcut" Guid="6A1F3D2B-7C4E-4B9A-9E1F-2A8C5D6E7B02">
+          <Shortcut Id="StartMenuShortcutItem"
+                    Name="Swiftwave Tweaks"
+                    Description="Windows 11 Performance &amp; Optimization Utility"
+                    Target="[INSTALLFOLDER]SwiftwaveTweaks.exe"
+                    WorkingDirectory="INSTALLFOLDER"
+                    Icon="AppIcon" />
+          <RegistryValue Root="HKLM"
+                         Key="Software\Swiftwave\Swiftwave Tweaks"
+                         Name="StartMenuShortcut"
+                         Value="1"
+                         Type="integer"
+                         KeyPath="yes" />
+          <RemoveFolder Id="RemoveAppProgramsFolder" Directory="AppProgramsFolder" On="uninstall" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <Feature Id="Main" Title="Swiftwave Tweaks" Level="1">
+      <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+  </Package>
+</Wix>

@@ -84,7 +84,6 @@ public static class OptimizationCatalog
     {
         var list = new List<Optimization>
         {
-            new PowerPlanOptimization(),
             new ProcessorPolicyOptimization(),
             new GameDvrOptimization(),
             new GameBarOptimization(),
@@ -118,15 +117,30 @@ public static class OptimizationCatalog
 
         // Fortnite specific optimizations: per-user, fully hidden Startup watcher that
         // excludes logical CPU 0 from the Fortnite process affinity. Category="Gaming"
-        // so it renders on the Gaming page under the General section.
+        // so it renders on the Windows page under the General section.
         list.Add(new FortniteAffinityOptimization());
 
-        // Windows Debloat: only the ContentDeliveryManager suggestion surfaces are
-        // automated — they have a safe, documented, HKCU, per-feature, reversible mechanism.
-        // Background-activity reduction, preinstalled-app background control, and the broad
-        // ContentDeliveryAllowed master toggle are intentionally NOT exposed (no safe
-        // single-key mechanism exists on this Windows build). No services, components,
-        // or apps are disabled/removed. Category="Gaming" so it renders on the Gaming page.
+        // Windows Debloat: the merged card. Replaces the former "Reduce Windows suggestions"
+        // surface-only card and absorbs Hone's Disable Windows Services (PE9bgwi0) and Reduce
+        // Background Activity (9C0X9LiC). The legacy card is still registered below so that
+        // existing rollback-history records continue to resolve by id.
+        list.Add(new DebloatOptimization());
+
+        // V3 backend features (Hone nine-optimization parity).
+        list.Add(new FpsInputLagOptimization());
+        list.Add(new StorageMemoryOptimization());
+        list.Add(new DynamicInterruptSteeringOptimization());
+        list.Add(new NetworkPerformanceOptimization());
+        list.Add(new DeviceAffinityOptimization());
+        list.Add(new MsiOptimization());
+        list.Add(new MaxPerformancePowerModeOptimization());
+
+        // Retired cards. Category "Legacy" keeps them out of every UI page while still allowing
+        // History & Restore to resolve rollback records created by earlier builds:
+        //  • "power-plan" is superseded by v3-max-performance-power;
+        //  • "windows-suggestions" was merged into the debloat card.
+        // Neither is referenced by any preset, so they are never applied as duplicates.
+        list.Add(new PowerPlanOptimization());
         list.Add(new WindowsSuggestionsOptimization());
 
         return list;
@@ -139,16 +153,23 @@ public static class Presets
     public sealed record PresetDef(string Id, string Name, string Description, string[] OptimizationIds);
 
     public static readonly PresetDef Recommended = new("recommended", "Recommended safe optimizations",
-        "Only broadly safe changes: best performance power plan, Game DVR background recording off, Game Bar overlay off, Game Mode on, Windows default visuals and one-shot storage optimization.",
-        ["power-plan", "game-dvr", "game-bar", "game-mode", "visual-default", "storage"]);
+        "Broadly safe, reversible changes: the Swiftwave maximum-performance power mode, the FPS & input-delay " +
+        "profile, Game DVR background recording off, Game Bar overlay off, Game Mode on, Windows default " +
+        "visuals and one-shot storage optimization. Device-level, service and network tuning are not applied " +
+        "automatically.",
+        ["v3-max-performance-power", "v3-fps-input-lag", "game-dvr", "game-bar", "game-mode", "visual-default", "storage"]);
 
     public static readonly PresetDef Gaming = new("gaming", "Gaming performance",
-        "Focuses on power policy, Game DVR/Game Bar activity and startup noise. Adds the advanced processor frequency ceiling.",
-        ["power-plan", "game-dvr", "game-bar", "game-mode", "processor-policy", "visual-balanced", "storage"]);
+        "Full performance profile: maximum-performance power mode, FPS/input-delay profile, device interrupt " +
+        "affinities, message-signalled interrupts, network performance, dynamic interrupt steering, Game " +
+        "DVR/Game Bar activity and the advanced processor frequency ceiling.",
+        ["v3-max-performance-power", "v3-fps-input-lag", "v3-device-affinity", "v3-msi", "v3-network-performance",
+         "v3-dynamic-interrupt-steering", "game-dvr", "game-bar", "game-mode", "processor-policy",
+         "visual-balanced", "storage"]);
 
     public static readonly PresetDef Balanced = new("balanced", "Balanced",
         "Low-risk optimizations while preserving normal Windows behaviour.",
-        ["power-plan", "game-mode", "visual-default"]);
+        ["v3-max-performance-power", "game-mode", "visual-default"]);
 
     public static IReadOnlyList<PresetDef> All => [Recommended, Gaming, Balanced];
 

@@ -129,10 +129,13 @@ foreach ($k in @('*EEE','AdvancedEEE','EnableGreenEthernet','PowerSavingMode')) 
     public static bool TryDisableEnergySaving(string adapterDescription, IReadOnlyList<NetworkEnergySetting> targets, out string detail)
     {
         detail = "";
-        var kwList = string.Join(",", targets.Select(t => "`'" + t.Keyword + "`'"));
+        // Adapter descriptions come from driver metadata and may contain apostrophes —
+        // escape for PowerShell single-quoted strings (a raw apostrophe breaks the script).
+        var safeDescription = adapterDescription.Replace("'", "''");
+        var kwList = string.Join(",", targets.Select(t => "`'" + t.Keyword.Replace("'", "''") + "`'"));
         var script = $@"
 $ErrorActionPreference='Stop'
-$ad = Get-NetAdapter -InterfaceDescription '{adapterDescription}'
+$ad = Get-NetAdapter -InterfaceDescription '{safeDescription}'
 if ($null -eq $ad) {{ 'FAIL=adapter not found'; exit 1 }}
 $kws = @({kwList})
 foreach ($k in $kws) {{
@@ -159,15 +162,18 @@ foreach ($k in $kws) {{
     public static bool TryRestoreEnergySaving(string adapterDescription, IReadOnlyList<NetworkEnergySetting> previous, out string detail)
     {
         detail = "";
+        var safeDescription = adapterDescription.Replace("'", "''");
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("$ErrorActionPreference='Stop'");
-        sb.AppendLine($"$ad = Get-NetAdapter -InterfaceDescription '{adapterDescription}'");
+        sb.AppendLine($"$ad = Get-NetAdapter -InterfaceDescription '{safeDescription}'");
         sb.AppendLine("if ($null -eq $ad) { 'FAIL=adapter not found'; exit 1 }");
         foreach (var s in previous)
         {
             // Keywords and values here come from the driver's own enumeration (keyword) and an
             // integer previously read from the same adapter — never free-form user input.
-            sb.AppendLine($"try {{ $ad | Set-NetAdapterAdvancedProperty -RegistryKeyword '{s.Keyword}' -RegistryValue {s.Value} -ErrorAction Stop; 'SET=OK:{s.Keyword}=' + {s.Value} }} catch {{ 'SET=FAIL:{s.Keyword}:' + $_.Exception.Message; exit 2 }}");
+            // Apostrophes are still escaped so a driver-reported keyword cannot break the script.
+            var safeKeyword = s.Keyword.Replace("'", "''");
+            sb.AppendLine($"try {{ $ad | Set-NetAdapterAdvancedProperty -RegistryKeyword '{safeKeyword}' -RegistryValue {s.Value} -ErrorAction Stop; 'SET=OK:{safeKeyword}=' + {s.Value} }} catch {{ 'SET=FAIL:{safeKeyword}:' + $_.Exception.Message; exit 2 }}");
         }
         var r = ProcessRunner.RunElevatedPowerShellWithOutput(sb.ToString());
         detail = r.Output.Trim();

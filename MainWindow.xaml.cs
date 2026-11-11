@@ -1,9 +1,11 @@
 using System.Reflection;
-using System.Security.Principal;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Shapes;
 using SwiftwaveTweaks.Core;
 using SwiftwaveTweaks.Services;
 
@@ -20,10 +22,19 @@ public partial class MainWindow : Window
 {
     private static readonly (string Label, string Key)[] PageDefs =
     [
-        ("Dashboard", "dashboard"), ("Recommended", "recommended"), ("Gaming", "gaming"),
-        ("NVIDIA", "nvidia"), ("Power", "power"), ("Storage", "storage"), ("Network", "network"),
+        ("Dashboard", "dashboard"), ("Recommended", "recommended"), ("Windows", "windows"),
+        ("GPU", "gpu"), ("Power", "power"), ("Storage", "storage"), ("Network", "network"),
         ("Startup", "startup"), ("Cleanup", "cleanup"), ("Diagnostics", "diagnostics"),
         ("History & Restore", "history"), ("Settings", "settings"),
+    ];
+
+    /// <summary>
+    /// Fixed display order for the Windows optimizations: the general FPS/input-delay profile,
+    /// then debloat, then the device interrupt work (affinity → MSI → steering).
+    /// </summary>
+    private static readonly string[] V3WindowsIds =
+    [
+        "v3-fps-input-lag", "debloat", "v3-device-affinity", "v3-msi", "v3-dynamic-interrupt-steering"
     ];
 
     private UserPreferences _prefs;
@@ -31,15 +42,48 @@ public partial class MainWindow : Window
     private bool _allowClose;
     private int _navToken;
     private CaptionButton? _maxButton;
+    private readonly List<CaptionButton> _captionButtons = [];
+
+    /// <summary>
+    /// Set by App before the window is created: true only when this process was launched by the
+    /// Windows startup registration (the Run command carries the marker argument). "Start
+    /// minimized" (tray-only startup) applies exclusively to that case — manual launches always
+    /// open normally in the foreground.
+    /// </summary>
+    internal static bool LaunchFromStartup;
+
+    /// <summary>
+    /// "Start minimized" means *start in the notification area*: on a device-startup launch the
+    /// window is created hidden with no taskbar button and only the tray icon represents the app.
+    /// It is never a minimized window, and it only applies to startup launches — manual launches
+    /// always open normally in the foreground. Applying this after the intro is what used to make
+    /// the window appear and then minimize itself.
+    /// </summary>
+    private readonly bool _startedInTray;
 
     private Task<SystemSnapshot>? _snapshotTask;
     private Task<NvidiaInfo>? _nvidiaTask;
     private List<Optimization>? _catalog;
 
+    /// <summary>Live CPU/memory/uptime poller owned by the dashboard; disposed when the page changes.</summary>
+    private LiveTelemetry? _telemetry;
+    private bool _telemetrySuspended;
+
     public MainWindow()
     {
         InitializeComponent();
         _prefs = PreferencesStore.Read();
+
+        // "Start minimized" = run in the notification area (tray icon only). Set before the window
+        // is first shown: no taskbar button, no minimized window waiting in the taskbar, and the
+        // window is hidden in OnLoaded as soon as the tray icon exists. Manual launches are
+        // unaffected (LaunchFromStartup is false).
+        _startedInTray = _prefs.MinimizeOnStartup && LaunchFromStartup;
+        if (_startedInTray)
+        {
+            ShowInTaskbar = false;
+            WindowState = WindowState.Minimized;
+        }
 
         var info = Assembly.GetExecutingAssembly()
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
@@ -48,19 +92,40 @@ public partial class MainWindow : Window
         BuildCaptionButtons();
         UpdateAdminStatus();
 
+        // Repaint the caption glyphs and rebuild the current page with the new palette.
+        ThemeService.Changed += OnThemeChanged;
+
         Loaded += OnLoaded;
         StateChanged += (_, _) => _maxButton?.SetAlt(WindowState == WindowState.Maximized);
+        IsVisibleChanged += (_, _) =>
+        {
+            // Tray-hidden windows keep no monitor running; rebuilding the dashboard on return
+            // gives the gauges a fresh sampler instead of a frozen reading.
+            if (!IsVisible)
+            {
+                if (_telemetry is null) return;
+                _telemetry.Dispose();
+                _telemetry = null;
+                _telemetrySuspended = true;
+            }
+            else if (_telemetrySuspended)
+            {
+                _telemetrySuspended = false;
+                if (Navigation.SelectedIndex >= 0 && PageDefs[Navigation.SelectedIndex].Key == "dashboard")
+                    ReloadCurrentPage();
+            }
+        };
     }
 
-    /// <summary>"2.0.0" → "2.0" — the visible footer reads v2.0, derived from the project version.</summary>
+    /// <summary>"3.0.0" → "3.0" — the visible footer reads v3.0, derived from the project version.</summary>
     internal static string MajorMinorVersion(string? informational)
     {
         if (informational is not null && Version.TryParse(informational.Split('+')[0], out var v))
             return $"{v.Major}.{v.Minor}";
-        return informational ?? "2.0";
+        return informational ?? "3.0";
     }
 
-    /// <summary>"2.0.0" → "2" — short form used by the About card.</summary>
+    /// <summary>"3.0.0" → "3" — short form used by the About card.</summary>
     internal static string ShortVersion(string? informational)
     {
         if (informational is not null && Version.TryParse(informational.Split('+')[0], out var v))
@@ -70,7 +135,7 @@ public partial class MainWindow : Window
 
     internal static string FullVersion()
         => Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "2.0.0";
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "3.0.0";
 
     // ───────────────────────────── window chrome ─────────────────────────────
 
@@ -85,6 +150,9 @@ public partial class MainWindow : Window
         var close = new CaptionButton("Close", "M 1 1 L 9 9 M 9 1 L 1 9", danger: true);
         close.Clicked += (_, _) => Close();
 
+        _captionButtons.Add(min);
+        _captionButtons.Add(_maxButton);
+        _captionButtons.Add(close);
         CaptionButtons.Children.Add(min);
         CaptionButtons.Children.Add(_maxButton);
         CaptionButtons.Children.Add(close);
@@ -92,16 +160,12 @@ public partial class MainWindow : Window
         // WindowChrome caption area / resize border declared in MainWindow.xaml.
     }
 
+    /// <summary>
+    /// Reflects the *token*, not group membership: the window is only shown as elevated after
+    /// the process really holds an elevated administrator token.
+    /// </summary>
     private void UpdateAdminStatus()
-    {
-        try
-        {
-            using var identity = WindowsIdentity.GetCurrent();
-            bool admin = new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
-            AdminStatus.Text = admin ? "· administrator" : "";
-        }
-        catch { AdminStatus.Text = ""; }
-    }
+        => AdminStatus.Text = Elevation.IsElevated() ? "· administrator" : "";
 
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -109,6 +173,7 @@ public partial class MainWindow : Window
         _tray = new TrayIcon(this, "swiftwave tweaks.",
             restore: () => Dispatcher.Invoke(() =>
             {
+                ShowInTaskbar = true;
                 Show();
                 WindowState = WindowState.Normal;
                 Activate();
@@ -130,8 +195,23 @@ public partial class MainWindow : Window
             _tray.Show();
             return;
         }
+        ThemeService.Changed -= OnThemeChanged;
+        _telemetry?.Dispose();
+        _telemetry = null;
         _tray?.Dispose();
         base.OnClosing(e);
+    }
+
+    /// <summary>
+    /// A palette switch recolours the shared brushes in place and rewrites the resource brushes.
+    /// Animated or locally cloned colours (caption glyphs, toggles) are refreshed by rebuilding
+    /// the visible page, so no control is left on the previous theme.
+    /// </summary>
+    private void OnThemeChanged()
+    {
+        foreach (var button in _captionButtons) button.SyncColors();
+        if (!IsLoaded || PageHost.Content is null || Navigation.SelectedIndex < 0) return;
+        ReloadCurrentPage();
     }
 
     /// <summary>
@@ -141,6 +221,7 @@ public partial class MainWindow : Window
     /// </summary>
     internal void ActivateFromSecondInstance()
     {
+        ShowInTaskbar = true;
         Show();
         if (WindowState == WindowState.Minimized)
             WindowState = WindowState.Normal;
@@ -160,8 +241,19 @@ public partial class MainWindow : Window
         _snapshotTask = SystemDetector.CollectAsync();
         _nvidiaTask = Task.Run(NvidiaService.Query);
 
-        if (Motion.ReducedMotion)
+        if (_startedInTray)
         {
+            // Device startup with "Start minimized": hand the app over to the notification area.
+            // The window is hidden (no taskbar button, no minimized window), the tray icon is the
+            // only surface, and the intro is not played because nothing is visible.
+            Hide();
+            _tray?.Show();
+        }
+
+        if (Motion.ReducedMotion || _startedInTray)
+        {
+            // No window is visible to animate, and the intro must never be able to change the
+            // window's state or Z-order, so the overlay is dropped instead of played.
             WelcomeOverlay.Visibility = Visibility.Collapsed;
         }
         else
@@ -187,8 +279,6 @@ public partial class MainWindow : Window
             _prefs = _prefs with { OnboardingCompleted = true };
             PreferencesStore.Write(_prefs);
         }
-        if (_prefs.MinimizeOnStartup)
-            WindowState = WindowState.Minimized;
 
         // The sidebar's initial selection fired during InitializeComponent (and was skipped),
         // so load the starting page explicitly.
@@ -289,14 +379,22 @@ public partial class MainWindow : Window
     {
         FrameworkElement? content = null;
         string? error = null;
+        Action<List<(Optimization Opt, Detection Detection)>?>? applyDetection = null;
+        if (key != "dashboard")
+        {
+            // Monitoring belongs to the dashboard only: stop the timer as soon as another page
+            // is requested so nothing keeps polling in the background.
+            _telemetry?.Dispose();
+            _telemetry = null;
+        }
         try
         {
             content = key switch
             {
-                "dashboard" => BuildDashboard(await EnsureSnapshot()),
+                "dashboard" => BuildDashboard(await EnsureSnapshot(), out applyDetection),
                 "recommended" => BuildRecommended(await DetectCatalog()),
-                "gaming" => BuildCategory("gaming", await DetectCatalog()),
-                "nvidia" => BuildNvidia(await EnsureNvidia(), (await DetectCatalog()).First(o => o.Opt.Category == "NVIDIA").Opt),
+                "windows" => BuildCategory("windows", await DetectCatalog()),
+                "gpu" => BuildNvidia(await EnsureNvidia(), (await DetectCatalog()).First(o => o.Opt.Category == "NVIDIA")),
                 "power" => BuildCategory("power", await DetectCatalog()),
                 "storage" => BuildCategory("storage", await DetectCatalog()),
                 "network" => await BuildNetwork(),
@@ -321,10 +419,45 @@ public partial class MainWindow : Window
         if (!Motion.ReducedMotion)
             PageHost.BeginAnimation(OpacityProperty,
                 new DoubleAnimation(0.35, 1, Motion.Medium) { EasingFunction = Motion.OutEasing });
+
+        // The dashboard renders immediately; its coverage numbers arrive when detection finishes.
+        if (applyDetection is not null)
+            _ = UpdateDashboardCoverage(applyDetection, token);
+    }
+
+    /// <summary>
+    /// Resolves the dashboard's coverage and recommended-count placeholders from live detection.
+    /// The navigation token prevents a stale result from updating a page the user already left.
+    /// </summary>
+    private async Task UpdateDashboardCoverage(
+        Action<List<(Optimization Opt, Detection Detection)>?> apply, int token)
+    {
+        List<(Optimization Opt, Detection Detection)>? detected = null;
+        try
+        {
+            detected = await DetectCatalog();
+        }
+        catch (Exception ex)
+        {
+            SafeLog.Write("Dashboard detection failed.", ex);
+        }
+        if (token != _navToken) return;
+        apply(detected);
     }
 
     private Task<SystemSnapshot> EnsureSnapshot() => _snapshotTask ??= SystemDetector.CollectAsync();
     private Task<NvidiaInfo> EnsureNvidia() => _nvidiaTask ??= Task.Run(NvidiaService.Query);
+
+    /// <summary>
+    /// Drops the memoized snapshot and drive-bound catalog after a mutation (apply, revert,
+    /// preset, startup change, cleanup, restore) so the next page load re-collects real data
+    /// instead of showing pre-change drive space, power plan or process counts.
+    /// </summary>
+    private void InvalidateSystemCache()
+    {
+        _snapshotTask = null;
+        _catalog = null;
+    }
 
     /// <summary>Builds the catalog once (drive-bound), then live-detects every optimization off-thread.</summary>
     private async Task<List<(Optimization Opt, Detection Detection)>> DetectCatalog()
@@ -345,96 +478,456 @@ public partial class MainWindow : Window
 
     // ───────────────────────────── pages ─────────────────────────────
 
-    private FrameworkElement BuildDashboard(SystemSnapshot s)
+    private const string CpuIcon = "M9 3v2 M15 3v2 M9 19v2 M15 19v2 M3 9h2 M3 15h2 M19 9h2 M19 15h2 M6 5h12v14H6z M10 9h4v6h-4z";
+    private const string GpuIcon = "M2 7h20v10H2z M5 10h5v4H5z M13 10h6 M13 13h6 M6 17v3 M18 17v3";
+    private const string RamIcon = "M3 8h18v7H3z M7 8v3 M11 8v3 M15 8v3 M19 8v3 M6 15v3 M18 15v3";
+    private const string StorageIcon = "M3 6h18v9H3z M6 10h.01 M17 10h.01 M7 18c2-1.5 3-1.5 5 0s3 1.5 5 0";
+    private const string BoardIcon = "M4 4h16v16H4z M8 8h8v8H8z M10 4v4 M14 4v4 M10 16v4 M14 16v4 M4 10h4 M4 14h4 M16 10h4 M16 14h4";
+    private const string WindowsIcon = "M4 5.5l7-1v7H4z M12.5 4.3l7.5-1.1v8.3h-7.5z M4 12h7v6.5l-7-1z M12.5 12h7.5v8.2l-7.5-1.1z";
+
+    /// <summary>
+    /// Builds the dashboard with the hardware snapshot only. Coverage and the recommended count
+    /// start as neutral placeholders and are filled by <paramref name="applyDetection"/> when
+    /// live detection completes, so a slow detection pass never delays the page.
+    /// </summary>
+    private FrameworkElement BuildDashboard(SystemSnapshot s,
+        out Action<List<(Optimization Opt, Detection Detection)>?> applyDetection)
     {
+        _telemetry?.Dispose();
+        _telemetry = null;
+
+        var coverageRing = new RingGauge(Ui.Accent) { VerticalAlignment = VerticalAlignment.Top };
+        coverageRing.SetValue(null);
+        var coverageLine = Ui.Text("Evaluating installed optimizations…", 12.5, Ui.TextDim,
+            margin: new Thickness(0, 12, 0, 2));
+        var coverageNote = Ui.Text(
+            "Coverage excludes unsupported and manual items; partially configured or unapplied items count as inactive.",
+            11.5, Ui.TextFaint);
+        var applySubtitle = Ui.Text("Checking the recommended set…", 11.5, Ui.TextMuted,
+            margin: new Thickness(0, 3, 0, 0));
+
         var panel = new StackPanel();
-        panel.Children.Add(Ui.CardPanel(BuildPcSpecs(s)));
 
-        var gaming = new StackPanel();
-        gaming.Children.Add(Ui.Text("Gaming-relevant state", 13.5, Ui.TextWhite, FontWeights.SemiBold));
-        var stateGrid = new Grid { Margin = new Thickness(0, 6, 0, 0) };
-        stateGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(150) });
-        stateGrid.ColumnDefinitions.Add(new ColumnDefinition());
-        (string Label, string Value)[] states =
-        [
-            ("Game Mode", s.GameModeState == 0 ? "disabled" : "enabled (recommended)"),
-            ("Game Bar overlay", s.GameBarState == 0 ? "disabled" : "enabled"),
-            ("Game DVR recording", s.GameDvrPolicyPresent ? "disabled (system policy)" : s.GameDvrUserState == 0 ? "disabled" : "enabled"),
-            ("HAGS", s.HagsMode == 2 ? "enabled" : s.HagsMode == 1 ? "disabled" : "not configured (default)"),
-        ];
-        for (int i = 0; i < states.Length; i++)
+        // Introduction on the left, live load on the right: the overview the dashboard opens with.
+        var top = new Grid();
+        top.ColumnDefinitions.Add(new ColumnDefinition());
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(356) });
+        top.Children.Add(BuildDashboardIntro(coverageRing, coverageLine, coverageNote));
+
+        var live = BuildLiveLoad();
+        live.Margin = new Thickness(12, 0, 0, 12);
+        Grid.SetColumn(live, 1);
+        top.Children.Add(live);
+        panel.Children.Add(top);
+
+        panel.Children.Add(BuildQuickActions(applySubtitle));
+        panel.Children.Add(BuildHardware(s));
+
+        applyDetection = detected =>
         {
-            stateGrid.RowDefinitions.Add(new RowDefinition());
-            var label = Ui.Text(states[i].Label, 12.5, Ui.TextMuted, margin: new Thickness(0, 2, 0, 2));
-            var value = Ui.Text(states[i].Value, 12.5, Ui.TextDim, margin: new Thickness(0, 2, 0, 2));
-            Grid.SetRow(label, i);
-            Grid.SetRow(value, i);
-            Grid.SetColumn(value, 1);
-            stateGrid.Children.Add(label);
-            stateGrid.Children.Add(value);
-        }
-        gaming.Children.Add(stateGrid);
-        panel.Children.Add(Ui.CardPanel(gaming));
+            if (detected is null)
+            {
+                coverageRing.SetValue(null);
+                coverageLine.Text = "Optimization coverage unavailable.";
+                applySubtitle.Text = "The recommended set could not be evaluated.";
+                return;
+            }
 
-        panel.Children.Add(Ui.CardPanel(Ui.Text(
-            "Open Recommended for the safe one-click set, or review each section from the sidebar. " +
-            "Every change is detected live, verified after applying, and restorable from History & Restore.",
-            12.5, Ui.TextMuted)));
+            var relevant = detected
+                .Where(d => !string.Equals(d.Opt.Category, "Legacy", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            int active = relevant.Count(d => d.Detection.State == OptState.Optimized);
+            int applicable = relevant.Count(d => d.Detection.State == OptState.Optimized || d.Detection.Selectable);
+            coverageRing.SetValue(applicable == 0 ? 0 : 100.0 * active / applicable);
+            coverageLine.Text = applicable == 0
+                ? "No optimizations could be evaluated on this system."
+                : $"{active} of {applicable} applicable optimizations are active.";
+
+            var recommended = Presets.Resolve(Presets.Recommended, detected.Select(d => d.Opt).ToList());
+            int pending = recommended.Count(o =>
+            {
+                var d = detected.First(x => x.Opt.Id == o.Id).Detection;
+                return d.Selectable && d.State != OptState.Optimized;
+            });
+            applySubtitle.Text = pending > 0
+                ? $"{pending} recommended change{(pending == 1 ? "" : "s")} available on this PC."
+                : "Every recommended change is already active.";
+        };
+
         return panel;
     }
 
     /// <summary>
-    /// "Your PC" heading plus secondary category labels over the live-detected values.
-    /// Data, ordering and the v2 card layout are unchanged from ToDisplayText(); only the
-    /// typographic hierarchy is new.
+    /// Introduction plus the optimization overview. Coverage is the share of optimizations that
+    /// can actually run on this PC and are currently in their recommended state. Unsupported and
+    /// manual items are excluded from both sides; partial or unapplied items count as inactive.
     /// </summary>
-    private FrameworkElement BuildPcSpecs(SystemSnapshot s)
+    private static FrameworkElement BuildDashboardIntro(RingGauge ring, TextBlock coverageLine, TextBlock coverageNote)
     {
-        var ram = s.RamModules.Count == 0
-            ? $"{s.MemoryGb:N0} GB total"
-            : $"{s.MemoryGb:N0} GB total across {s.RamModules.Count} module(s)\n" +
-              string.Join("\n", s.RamModules.Select(m =>
-                  $"{m.Slot}: {m.CapacityGb:N0} GB @ {m.ConfiguredSpeedMts?.ToString() ?? "?"} MT/s" +
-                  (m.SpeedMts is int rated && m.ConfiguredSpeedMts is int cfg && cfg < rated ? $" (rated {rated} MT/s)" : "")));
-        var drives = s.Drives.Count == 0 ? "No fixed drives detected." : string.Join("\n", s.Drives.Select(d =>
-            $"{d.Letter} {d.VolumeLabel,-12} {d.BusKind,-5} {d.FreeGb,6:N0} GB free of {d.SizeGb,6:N0} GB — {d.Model}"));
-        var monitors = s.Monitors.Count == 0 ? "Display information unavailable." : string.Join("\n", s.Monitors.Select(m =>
-            $"{m.Device}: {m.Width}x{m.Height} @ {m.CurrentHz} Hz" + (m.MaxHzAtCurrentRes > m.CurrentHz ? $" (supports up to {m.MaxHzAtCurrentRes} Hz)" : "")));
+        var body = new Grid();
+        body.ColumnDefinitions.Add(new ColumnDefinition());
+        body.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        (string Label, string Value)[] sections =
-        [
-            ("Windows", s.WindowsLine),
-            ("Processor", $"{s.CpuName} — {s.CpuCores} cores / {s.CpuThreads} threads"),
-            ("Graphics", $"{s.GpuName}\nDriver {s.GpuDriver}"),
-            ("Memory", ram),
-            ("Displays", monitors),
-            ("Active power plan", s.PowerPlan),
-            ("Storage", drives),
-            ("Processes running", s.ProcessCount.ToString()),
-        ];
+        var copy = new StackPanel { Margin = new Thickness(0, 0, 20, 0) };
+        copy.Children.Add(Ui.Text("Getting started", 23, Ui.TextWhite, FontWeights.SemiBold,
+            margin: new Thickness(0, 0, 0, 6)));
+        copy.Children.Add(Ui.Text(
+            "Swiftwave detects every optimization live, applies only what is eligible, verifies the result " +
+            "and keeps a rollback path for each change.",
+            12.5, Ui.TextMuted));
+        copy.Children.Add(coverageLine);
+        copy.Children.Add(coverageNote);
+        body.Children.Add(copy);
 
+        var ringBlock = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+        ringBlock.Children.Add(ring);
+        var caption = Ui.Text("coverage", 11, Ui.TextMuted, wrap: false, margin: new Thickness(0, 3, 0, 0));
+        caption.HorizontalAlignment = HorizontalAlignment.Center;
+        ringBlock.Children.Add(caption);
+        Grid.SetColumn(ringBlock, 1);
+        body.Children.Add(ringBlock);
+
+        return Ui.CardPanel(body, new Thickness(20, 16, 20, 16));
+    }
+
+    /// <summary>
+    /// Live CPU / memory gauges plus uptime and used RAM. Values come from <see cref="LiveTelemetry"/>
+    /// on a background timer and are marshalled here; a failed reading shows "—" and turns the
+    /// indicator to UNAVAILABLE instead of claiming LIVE.
+    /// </summary>
+    private FrameworkElement BuildLiveLoad()
+    {
         var box = new StackPanel();
-        box.Children.Add(Ui.Text("Your PC", 16, Ui.TextWhite, FontWeights.SemiBold,
-            margin: new Thickness(0, 0, 0, 10)));
-        for (int i = 0; i < sections.Length; i++)
+
+        // LastChildFill off: otherwise the capped pill is the fill child and its background
+        // stretches across the card instead of sitting compactly in the upper-right corner.
+        var head = new DockPanel { LastChildFill = false };
+        head.Children.Add(Ui.Text("Live system load", 13.5, Ui.TextWhite, FontWeights.SemiBold));
+        var pill = LivePill(out var pillDot, out var pillText);
+        pill.HorizontalAlignment = HorizontalAlignment.Right;
+        DockPanel.SetDock(pill, Dock.Right);
+        head.Children.Add(pill);
+        box.Children.Add(head);
+
+        var gauges = new Grid { Margin = new Thickness(0, 10, 0, 4) };
+        gauges.ColumnDefinitions.Add(new ColumnDefinition());
+        gauges.ColumnDefinitions.Add(new ColumnDefinition());
+        var cpu = new RingGauge(Ui.Accent);
+        var mem = new RingGauge(Ui.Good);
+        gauges.Children.Add(GaugeBlock(cpu, "CPU"));
+        var memory = GaugeBlock(mem, "Memory");
+        Grid.SetColumn(memory, 1);
+        gauges.Children.Add(memory);
+        box.Children.Add(gauges);
+
+        var footer = new Grid { Margin = new Thickness(2, 8, 2, 0) };
+        footer.ColumnDefinitions.Add(new ColumnDefinition());
+        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var uptime = Ui.Text("Uptime unavailable", 11.5, Ui.TextFaint, wrap: false);
+        var ram = Ui.Text("", 11.5, Ui.TextFaint, wrap: false);
+        Grid.SetColumn(ram, 1);
+        footer.Children.Add(uptime);
+        footer.Children.Add(ram);
+        box.Children.Add(footer);
+
+        _telemetry = new LiveTelemetry();
+        _telemetry.Sampled += sample =>
         {
-            box.Children.Add(new TextBlock
+            try
             {
-                Text = sections[i].Label,
-                FontSize = 11,
-                Foreground = Ui.TextMuted,
-                Margin = new Thickness(0, i == 0 ? 0 : 9, 0, 2)
-            });
-            box.Children.Add(new TextBlock
-            {
-                Text = sections[i].Value,
-                FontSize = 12.5,
-                Foreground = Ui.TextDim,
-                LineHeight = 19,
-                TextWrapping = TextWrapping.Wrap
-            });
+                Dispatcher.BeginInvoke(new Action(() =>
+                    ApplyTelemetry(sample, cpu, mem, uptime, ram, pill, pillDot, pillText)));
+            }
+            catch { /* the dispatcher is shutting down */ }
+        };
+
+        // Startup-in-tray builds the page while the window is hidden; do not poll until it is
+        // shown again (the show handler rebuilds the dashboard then).
+        if (!IsVisible)
+        {
+            _telemetry.Dispose();
+            _telemetry = null;
+            _telemetrySuspended = true;
         }
-        return box;
+
+        return Ui.CardPanel(box);
+    }
+
+    private static FrameworkElement GaugeBlock(RingGauge gauge, string label)
+    {
+        var stack = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
+        stack.Children.Add(gauge);
+        var caption = Ui.Text(label, 11.5, Ui.TextMuted, wrap: false, margin: new Thickness(0, 4, 0, 0));
+        caption.HorizontalAlignment = HorizontalAlignment.Center;
+        stack.Children.Add(caption);
+        return stack;
+    }
+
+    private static Border LivePill(out Ellipse dot, out TextBlock text)
+    {
+        dot = new Ellipse
+        {
+            Width = 6,
+            Height = 6,
+            Fill = Ui.StatusActiveText,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 6, 0)
+        };
+        text = new TextBlock { Text = "LIVE", FontSize = 10.5, FontWeight = FontWeights.SemiBold, Foreground = Ui.StatusActiveText };
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(dot);
+        row.Children.Add(text);
+        return new Border
+        {
+            Background = Ui.StatusActiveBg,
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(7, 3, 8, 3),
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = row
+        };
+    }
+
+    private static void ApplyTelemetry(TelemetrySample sample, RingGauge cpu, RingGauge memory,
+        TextBlock uptime, TextBlock ram, Border pill, Ellipse pillDot, TextBlock pillText)
+    {
+        cpu.SetValue(sample.CpuAvailable ? sample.CpuPercent : null);
+        memory.SetValue(sample.MemoryAvailable ? sample.MemoryPercent : null);
+        uptime.Text = "Up " + FormatUptime(sample.Uptime);
+        ram.Text = sample.MemoryAvailable
+            ? $"{sample.UsedGb:N1} / {sample.TotalGb:N1} GB RAM"
+            : "Memory unavailable";
+
+        bool live = sample.CpuAvailable || sample.MemoryAvailable;
+        pill.Background = live ? Ui.StatusActiveBg : Ui.StatusAttentionBg;
+        pillDot.Fill = live ? Ui.StatusActiveText : Ui.StatusAttentionText;
+        pillText.Foreground = live ? Ui.StatusActiveText : Ui.StatusAttentionText;
+        pillText.Text = live ? "LIVE" : "UNAVAILABLE";
+    }
+
+    private static string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalMinutes < 1) return "just started";
+        if (uptime.TotalHours < 1) return $"{(int)uptime.TotalMinutes}m";
+        if (uptime.TotalDays < 1) return $"{(int)uptime.TotalHours}h {uptime.Minutes:D2}m";
+        return $"{(int)uptime.TotalDays}d {uptime.Hours}h {uptime.Minutes:D2}m";
+    }
+
+    /// <summary>
+    /// Three dashboard shortcuts wired to existing functionality: Recommended navigation,
+    /// the existing System Restore checkpoint call and the existing safe temporary-file cleanup.
+    /// </summary>
+    private FrameworkElement BuildQuickActions(TextBlock applySubtitle)
+    {
+        var grid = new Grid();
+        for (int i = 0; i < 3; i++) grid.ColumnDefinitions.Add(new ColumnDefinition());
+
+        var apply = QuickActionCard("Apply recommended", applySubtitle,
+            "Open Recommended", out var applyButton, out _);
+        applyButton.Click += (_, _) => NavigateTo("recommended");
+        apply.Margin = new Thickness(0, 0, 12, 12);
+        grid.Children.Add(apply);
+
+        var restore = QuickActionCard("Restore point",
+            Ui.Text("Creates a Windows System Restore checkpoint before the next change.", 11.5, Ui.TextMuted),
+            "Create restore point", out var restoreButton, out var restoreStatus);
+        restoreButton.Click += async (_, _) => await RunRestorePoint(restoreButton, restoreStatus);
+        restore.Margin = new Thickness(0, 0, 12, 12);
+        Grid.SetColumn(restore, 1);
+        grid.Children.Add(restore);
+
+        var junk = QuickActionCard("Clean junk",
+            Ui.Text("Clears temporary files only — documents, downloads and app data are never touched.", 11.5, Ui.TextMuted),
+            "Clean temporary files", out var junkButton, out var junkStatus);
+        junkButton.Click += async (_, _) => await RunJunkClean(junkButton, junkStatus);
+        Grid.SetColumn(junk, 2);
+        grid.Children.Add(junk);
+
+        return grid;
+    }
+
+    private static Border QuickActionCard(string title, FrameworkElement subtitle, string action,
+        out Button button, out TextBlock status)
+    {
+        var copy = new StackPanel();
+        copy.Children.Add(Ui.Text(title, 13, Ui.TextWhite, FontWeights.SemiBold));
+        subtitle.Margin = new Thickness(0, 3, 0, 0);
+        copy.Children.Add(subtitle);
+        status = Ui.Text("", 11.5, Ui.TextMuted, margin: new Thickness(0, 4, 0, 0));
+        status.Visibility = Visibility.Collapsed;
+        copy.Children.Add(status);
+
+        // The button sits in a star row so all three cards share one baseline regardless of how
+        // many lines their subtitles take.
+        var layout = new Grid();
+        layout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        layout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        layout.Children.Add(copy);
+        button = new Button
+        {
+            Content = action,
+            Margin = new Thickness(0, 10, 0, 0),
+            VerticalAlignment = VerticalAlignment.Bottom
+        };
+        Grid.SetRow(button, 1);
+        layout.Children.Add(button);
+        return Ui.CardPanel(layout, new Thickness(14, 12, 14, 12));
+    }
+
+    private void NavigateTo(string key)
+    {
+        int index = Array.FindIndex(PageDefs, p => p.Key == key);
+        if (index >= 0) Navigation.SelectedIndex = index;
+    }
+
+    private async Task RunRestorePoint(Button button, TextBlock status)
+    {
+        string original = button.Content as string ?? "Create restore point";
+        button.IsEnabled = false;
+        button.Content = "Creating…";
+        status.Visibility = Visibility.Visible;
+        status.Text = "Contacting System Protection…";
+        status.Foreground = Ui.TextMuted;
+        SetBusy(true, "Creating a system restore point…");
+        var (success, message) = await Task.Run(() => RestorePointService.TryCreate("Swiftwave Tweaks"));
+        SetBusy(false);
+        status.Text = message;
+        status.Foreground = success ? Ui.Good : Ui.Warn;
+        button.Content = original;
+        button.IsEnabled = true;
+    }
+
+    private async Task RunJunkClean(Button button, TextBlock status)
+    {
+        string original = button.Content as string ?? "Clean temporary files";
+        button.IsEnabled = false;
+        button.Content = "Cleaning…";
+        status.Visibility = Visibility.Visible;
+        status.Text = "Measuring and clearing temporary files…";
+        status.Foreground = Ui.TextMuted;
+        SetBusy(true, "Cleaning temporary files…");
+
+        var category = CleanupService.Measure().FirstOrDefault(c => c.Id == "user-temp");
+        (bool Success, double ReclaimedMb, string Message) result;
+        if (category is null) result = (false, 0, "The temporary-file cleanup category is unavailable.");
+        else result = await Task.Run(() => CleanupService.Clean(category));
+
+        SetBusy(false);
+        status.Text = result.Message;
+        status.Foreground = result.Success ? Ui.Good : Ui.Warn;
+        button.Content = original;
+        button.IsEnabled = true;
+        if (result.Success) InvalidateSystemCache();
+    }
+
+    /// <summary>"Your hardware" card grid: six components plus the real elevation state.</summary>
+    private FrameworkElement BuildHardware(SystemSnapshot s)
+    {
+        var section = new StackPanel();
+
+        var head = new Grid { Margin = new Thickness(2, 10, 2, 8) };
+        head.ColumnDefinitions.Add(new ColumnDefinition());
+        head.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        head.Children.Add(Ui.Text("Your hardware", 13, Ui.TextDim, FontWeights.SemiBold));
+
+        bool elevated = Elevation.IsElevated();
+        var admin = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        admin.Children.Add(new Ellipse
+        {
+            Width = 6,
+            Height = 6,
+            Fill = elevated ? Ui.Good : Ui.Warn,
+            Margin = new Thickness(0, 0, 6, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        });
+        admin.Children.Add(Ui.Text(elevated ? "Running as administrator" : "Not running as administrator",
+            11.5, elevated ? Ui.TextDim : Ui.Warn, wrap: false));
+        Grid.SetColumn(admin, 1);
+        head.Children.Add(admin);
+        section.Children.Add(head);
+
+        var grid = new Grid();
+        for (int i = 0; i < 3; i++) grid.ColumnDefinitions.Add(new ColumnDefinition());
+        grid.RowDefinitions.Add(new RowDefinition());
+        grid.RowDefinitions.Add(new RowDefinition());
+
+        var speeds = s.RamModules
+            .Select(m => m.ConfiguredSpeedMts)
+            .Where(v => v is > 0)
+            .Select(v => v!.Value)
+            .Distinct()
+            .OrderByDescending(v => v)
+            .ToList();
+        string memoryDetail = s.RamModules.Count == 0
+            ? "Module details unavailable"
+            : (speeds.Count == 0 ? "" : $"{string.Join(" / ", speeds)} MT/s · ") + $"{s.RamModules.Count} module(s)";
+
+        Place(HardwareCard(CpuIcon, "Processor", s.CpuName,
+            $"{s.CpuCores} cores · {s.CpuThreads} threads"), 0, 0);
+        Place(HardwareCard(GpuIcon, "Graphics", s.GpuName,
+            string.IsNullOrWhiteSpace(s.GpuDriver) ? "" : "Driver " + s.GpuDriver), 1, 0);
+        Place(HardwareCard(RamIcon, "Memory", $"{s.MemoryGb:N0} GB", memoryDetail), 2, 0);
+        Place(StorageCard(s), 0, 1);
+        Place(HardwareCard(BoardIcon, "Motherboard",
+            string.IsNullOrWhiteSpace(s.MotherboardModel) ? "Unavailable" : s.MotherboardModel,
+            s.MotherboardVendor), 1, 1);
+        Place(HardwareCard(WindowsIcon, "Windows", s.WindowsEdition,
+            $"Version {s.WindowsVersion} · build {s.WindowsBuild}"), 2, 1);
+
+        section.Children.Add(grid);
+        return section;
+
+        void Place(FrameworkElement card, int column, int row)
+        {
+            card.Margin = new Thickness(0, 0, column == 2 ? 0 : 12, 12);
+            Grid.SetColumn(card, column);
+            Grid.SetRow(card, row);
+            grid.Children.Add(card);
+        }
+    }
+
+    private static FrameworkElement HardwareCard(string icon, string label, string value,
+        string? detail = null, FrameworkElement? extra = null)
+    {
+        var stack = new StackPanel();
+        var head = new StackPanel { Orientation = Orientation.Horizontal };
+        head.Children.Add(Ui.Icon(icon, 15, Ui.TextMuted));
+        head.Children.Add(Ui.Text(label, 11.5, Ui.TextMuted, wrap: false, margin: new Thickness(7, 0, 0, 0)));
+        stack.Children.Add(head);
+        stack.Children.Add(Ui.Text(value, 13.5, Ui.TextWhite, FontWeights.SemiBold,
+            margin: new Thickness(0, 8, 0, 0), trimming: TextTrimming.CharacterEllipsis));
+        if (!string.IsNullOrWhiteSpace(detail))
+            stack.Children.Add(Ui.Text(detail, 11.5, Ui.TextDim, margin: new Thickness(0, 3, 0, 0)));
+        if (extra is not null) stack.Children.Add(extra);
+        return Ui.CardPanel(stack, new Thickness(14, 12, 14, 12));
+    }
+
+    /// <summary>Primary system drive with total/used/free capacity and a restrained usage bar.</summary>
+    private static FrameworkElement StorageCard(SystemSnapshot s)
+    {
+        string root = (System.IO.Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\").TrimEnd('\\');
+        var drive = s.Drives.FirstOrDefault(d => string.Equals(d.Letter.TrimEnd('\\'), root, StringComparison.OrdinalIgnoreCase))
+                    ?? s.Drives.FirstOrDefault();
+        if (drive is null)
+            return HardwareCard(StorageIcon, "Storage", "Unavailable", "No fixed drive information.");
+
+        double used = Math.Max(0, drive.SizeGb - drive.FreeGb);
+        double fraction = drive.SizeGb > 0 ? used / drive.SizeGb : 0;
+
+        var track = new Border { Height = 5, CornerRadius = new CornerRadius(3), Background = Ui.CardSoft };
+        var fill = new Border
+        {
+            Height = 5,
+            CornerRadius = new CornerRadius(3),
+            Background = Ui.Accent,
+            HorizontalAlignment = HorizontalAlignment.Left
+        };
+        var bar = new Grid { Margin = new Thickness(0, 10, 0, 0) };
+        bar.Children.Add(track);
+        bar.Children.Add(fill);
+        bar.SizeChanged += (_, e) => fill.Width = Math.Max(0, e.NewSize.Width * fraction);
+
+        return HardwareCard(StorageIcon, "Storage", $"{drive.Letter} · {drive.SizeGb:N0} GB",
+            $"{used:N0} GB used · {drive.FreeGb:N0} GB free", bar);
     }
 
     private FrameworkElement BuildRecommended(List<(Optimization Opt, Detection Detection)> detected)
@@ -499,23 +992,30 @@ public partial class MainWindow : Window
         }
         StatusText.Text = $"{preset.Name}: {applied} applied, {skipped} already optimal" + (failed > 0 ? $", {failed} failed (see History)" : ".");
         SetBusy(false);
+        InvalidateSystemCache(); // power plan / drive data may have changed
         ReloadCurrentPage();
     }
 
-    private FrameworkElement BuildCategory(string key, List<(Optimization Opt, Detection Detection)> detected)
+    internal FrameworkElement BuildCategory(string key, List<(Optimization Opt, Detection Detection)> detected)
     {
         var panel = new StackPanel();
         switch (key)
         {
-            case "gaming":
+            case "windows":
+                panel.Children.Add(Ui.Text(
+                    "Each Windows optimization detects this machine first, applies only what is eligible, " +
+                    "then verifies the result. Device-level interrupt changes are advanced and need a restart.",
+                    12.5, Ui.TextMuted, margin: new Thickness(2, 0, 0, 10)));
                 panel.Children.Add(Ui.SectionHeader("General"));
                 foreach (var d in detected.Where(x => x.Opt.Id == "fortnite-affinity"))
                     panel.Children.Add(new OptimizationCard(d.Opt, d.Detection, this, roomy: true));
-                panel.Children.Add(Ui.SectionHeader("Windows Background & Debloat"));
-                foreach (var d in detected.Where(x => x.Opt.Id == "windows-suggestions"))
-                    panel.Children.Add(new OptimizationCard(d.Opt, d.Detection, this));
-                panel.Children.Add(Ui.SectionHeader("Gaming"));
-                foreach (var d in detected.Where(x => x.Opt.Category == "Gaming" && x.Opt.Id is not ("fortnite-affinity" or "windows-suggestions")))
+                panel.Children.Add(Ui.SectionHeader("Performance & background activity"));
+                foreach (var id in V3WindowsIds)
+                    foreach (var d in detected.Where(x => x.Opt.Id == id))
+                        panel.Children.Add(new OptimizationCard(d.Opt, d.Detection, this));
+                panel.Children.Add(Ui.SectionHeader("Windows features"));
+                foreach (var d in detected.Where(x => x.Opt.Category == "Gaming"
+                    && !V3WindowsIds.Contains(x.Opt.Id) && x.Opt.Id != "fortnite-affinity"))
                     panel.Children.Add(new OptimizationCard(d.Opt, d.Detection, this, roomy: true));
                 panel.Children.Add(Ui.SectionHeader("Visual effects"));
                 foreach (var d in detected.Where(x => x.Opt.Category == "Visual"))
@@ -524,7 +1024,7 @@ public partial class MainWindow : Window
             case "power":
                 panel.Children.Add(Ui.Text(
                     "Only supported, verifiable Windows power policies are exposed. No forced minimum processor state, " +
-                    "no forced maximum frequency, no global core-parking changes, no BIOS or voltage modifications.",
+                    "no forced maximum frequency, no BIOS or voltage modifications.",
                     12.5, Ui.TextMuted, margin: new Thickness(2, 0, 0, 10)));
                 foreach (var d in detected.Where(x => x.Opt.Category == "Power"))
                     panel.Children.Add(new OptimizationCard(d.Opt, d.Detection, this));
@@ -532,16 +1032,35 @@ public partial class MainWindow : Window
             case "storage":
                 panel.Children.Add(Ui.Text(
                     "Windows Optimize Drives — TRIM/retrim on SSD and NVMe media, defragmentation on mechanical drives. " +
-                    "The correct method is chosen automatically per drive.",
+                    "The correct method is chosen automatically per drive. Storage & memory reworks service hosting " +
+                    "and NTFS behaviour and needs a restart.",
                     12.5, Ui.TextMuted, margin: new Thickness(2, 0, 0, 10)));
-                foreach (var d in detected.Where(x => x.Opt.Category == "Storage"))
+                panel.Children.Add(Ui.SectionHeader("Drives"));
+                foreach (var d in detected.Where(x => x.Opt.Category == "Storage" && x.Opt.Id.StartsWith("storage-")))
+                    panel.Children.Add(new OptimizationCard(d.Opt, d.Detection, this, roomy: true));
+                panel.Children.Add(Ui.SectionHeader("Storage & memory"));
+                foreach (var d in detected.Where(x => x.Opt.Id == "v3-storage-memory"))
                     panel.Children.Add(new OptimizationCard(d.Opt, d.Detection, this, roomy: true));
                 break;
         }
         return panel;
     }
 
-    private FrameworkElement BuildNvidia(NvidiaInfo info, Optimization powerOpt)
+    /// <summary>
+    /// Builds every optimization page tree from pre-collected detection data. Used only by the
+    /// headless UI self-test so that page composition is verified without showing a window.
+    /// </summary>
+    internal (string Key, FrameworkElement Root)[] BuildPagesForTest(
+        List<(Optimization Opt, Detection Detection)> detected)
+        =>
+        [
+            ("windows", BuildCategory("windows", detected)),
+            ("power", BuildCategory("power", detected)),
+            ("storage", BuildCategory("storage", detected)),
+            ("network", ComposeNetwork(NetworkAdapterService.ReadAsync().GetAwaiter().GetResult(), detected)),
+        ];
+
+    private FrameworkElement BuildNvidia(NvidiaInfo info, (Optimization Opt, Detection Detection) detected)
     {
         var panel = new StackPanel();
         if (!info.Present)
@@ -562,10 +1081,9 @@ public partial class MainWindow : Window
             12.5, Ui.TextDim, margin: new Thickness(0, 4, 0, 0)));
         panel.Children.Add(Ui.CardPanel(facts));
 
-        Detection detection;
-        try { detection = powerOpt.Detect(); }
-        catch (Exception ex) { detection = new Detection(OptState.Unsupported, "Detection failed: " + ex.Message, false, ""); }
-        panel.Children.Add(new OptimizationCard(powerOpt, detection, this));
+        // Use the detection already gathered off-thread by DetectCatalog(); the NVAPI read
+        // must never run on the UI thread.
+        panel.Children.Add(new OptimizationCard(detected.Opt, detected.Detection, this));
         return panel;
     }
 
@@ -574,12 +1092,32 @@ public partial class MainWindow : Window
         // Detection runs entirely off the UI thread (the original freeze came from synchronous
         // detection); LoadPage's navigation token already guards against stale results.
         var reading = await NetworkAdapterService.ReadAsync();
+        var detected = await DetectCatalog();
+        return ComposeNetwork(reading, detected);
+    }
+
+    /// <summary>
+    /// Builds the Network page from already-collected data. Split out so the headless UI
+    /// self-test exercises exactly the same card composition as the live page.
+    /// </summary>
+    internal FrameworkElement ComposeNetwork(
+        NetworkAdapterReading reading, List<(Optimization Opt, Detection Detection)> detected)
+    {
         var panel = new StackPanel();
+
+        // Windows-level TCP/IP tuning is independent of the active adapter model, so it is always
+        // shown (and remains usable on Wi-Fi-only or disconnected machines).
+        panel.Children.Add(Ui.SectionHeader("Windows network performance"));
+        var perf = detected.FirstOrDefault(d => d.Opt.Id == "v3-network-performance");
+        if (perf.Opt is not null)
+            panel.Children.Add(new OptimizationCard(perf.Opt, perf.Detection, this));
+
+        panel.Children.Add(Ui.SectionHeader("Adapter"));
         if (!reading.Present)
         {
             panel.Children.Add(Ui.CardPanel(Ui.Text(
-                "No active wired network adapter was detected. Network energy-saving controls are unavailable " +
-                "on wireless or disconnected adapters.",
+                "No active wired network adapter was detected. Adapter energy-saving controls are unavailable " +
+                "on wireless or disconnected adapters; the Windows tuning above is unaffected.",
                 12.5, Ui.TextMuted)));
             return panel;
         }
@@ -600,7 +1138,7 @@ public partial class MainWindow : Window
             return panel;
         }
 
-        var opt = (await DetectCatalog()).First(d => d.Opt.Id == "network-power-saving");
+        var opt = detected.First(d => d.Opt.Id == "network-power-saving");
         panel.Children.Add(new OptimizationCard(opt.Opt, opt.Detection, this));
         return panel;
     }
@@ -663,6 +1201,7 @@ public partial class MainWindow : Window
         var (success, message) = await Task.Run(() => disable ? StartupService.Disable(entry) : StartupService.Enable(entry));
         StatusText.Text = message;
         SetBusy(false);
+        InvalidateSystemCache(); // process counts and startup state may have changed
         ReloadCurrentPage();
     }
 
@@ -697,6 +1236,7 @@ public partial class MainWindow : Window
                 var result = await Task.Run(() => CleanupService.Clean(category));
                 StatusText.Text = result.Message;
                 SetBusy(false);
+                InvalidateSystemCache(); // drive free space and sizes may have changed
                 ReloadCurrentPage();
             };
             Grid.SetColumn(clean, 1);
@@ -769,6 +1309,7 @@ public partial class MainWindow : Window
                 if (result.Status == ApplyStatus.Applied) RollbackStore.Remove(entry.Id);
                 StatusText.Text = result.Message;
                 SetBusy(false);
+                InvalidateSystemCache(); // the restored setting may affect snapshot data
                 ReloadCurrentPage();
             };
             Grid.SetColumn(restore, 1);
@@ -782,9 +1323,13 @@ public partial class MainWindow : Window
     {
         var panel = new StackPanel();
 
+        panel.Children.Add(Ui.SectionHeader("Appearance"));
+        panel.Children.Add(ThemePicker());
+
         panel.Children.Add(Ui.SectionHeader("Preferences"));
+        panel.Children.Add(StartupRow());
         panel.Children.Add(PreferenceRow("Start minimized",
-            "The window starts minimized after the welcome sequence.",
+            "Only when Windows starts the app at sign-in: runs in the notification area as a tray icon, with no window or taskbar button. Manually launched windows always open in the foreground.",
             _prefs.MinimizeOnStartup, v => SavePrefs(_prefs with { MinimizeOnStartup = v })));
         panel.Children.Add(PreferenceRow("Close to system tray",
             "Closing the window keeps Swiftwave Tweaks running in the notification area. Left-click the icon to restore, right-click to exit.",
@@ -809,6 +1354,74 @@ public partial class MainWindow : Window
         return panel;
     }
 
+    /// <summary>
+    /// Colour-theme chooser. The whole app repaints immediately (shared brushes + resource
+    /// brushes) and the choice is written to preferences.json, so it survives a restart.
+    /// </summary>
+    private FrameworkElement ThemePicker()
+    {
+        var stack = new StackPanel();
+        stack.Children.Add(Ui.Text("Color theme", 13, Ui.TextWhite, FontWeights.SemiBold, wrap: false));
+        stack.Children.Add(Ui.Text(
+            "Applies to every page, card and text colour. The choice is saved for the next launch.",
+            12, Ui.TextMuted, margin: new Thickness(0, 2, 0, 0)));
+
+        var grid = new Grid { Margin = new Thickness(0, 12, 0, 0) };
+        var options = new (AppTheme Mode, string Title, string Detail)[]
+        {
+            (AppTheme.Default, "Default", "Swiftwave navy"),
+            (AppTheme.Light, "Light", "Black text on light surfaces"),
+            (AppTheme.Dark, "Dark", "Neutral dark"),
+            (AppTheme.System, "Follow system", SystemThemeDetail()),
+        };
+        for (int i = 0; i < options.Length; i++)
+        {
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            var option = ThemeOption(options[i].Mode, options[i].Title, options[i].Detail);
+            option.Margin = new Thickness(i == 0 ? 0 : 4, 0, i == options.Length - 1 ? 0 : 4, 0);
+            Grid.SetColumn(option, i);
+            grid.Children.Add(option);
+        }
+        stack.Children.Add(grid);
+        return Ui.CardPanel(stack);
+    }
+
+    private Button ThemeOption(AppTheme mode, string title, string detail)
+    {
+        bool selected = _prefs.Theme == mode;
+        var copy = new StackPanel();
+        copy.Children.Add(Ui.Text(title, 13, Ui.TextWhite, FontWeights.SemiBold, wrap: false));
+        copy.Children.Add(Ui.Text(detail, 11.5, Ui.TextMuted, margin: new Thickness(0, 3, 0, 0)));
+
+        var button = new Button
+        {
+            Content = copy,
+            Background = selected ? Ui.CardSoft : Ui.Card,
+            BorderBrush = selected ? Ui.Accent : Ui.Line,
+            BorderThickness = new Thickness(selected ? 1.5 : 1),
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Top,
+            Padding = new Thickness(12, 10, 12, 10),
+            MinHeight = 64
+        };
+        AutomationProperties.SetName(button, title + " theme");
+        button.Click += (_, _) => SelectTheme(mode);
+        return button;
+    }
+
+    private static string SystemThemeDetail()
+        => Environment.OSVersion.Version.Build >= 22000
+            ? "Matches the Windows light/dark setting"
+            : "Matches the Windows app theme";
+
+    private void SelectTheme(AppTheme mode)
+    {
+        if (_prefs.Theme == mode) return;
+        SavePrefs(_prefs with { Theme = mode });
+        // ThemeService raises Changed, which rebuilds this page with the new palette.
+        ThemeService.Apply(mode);
+    }
+
     private FrameworkElement PreferenceRow(string title, string description, bool value, Action<bool> changed)
     {
         var grid = new Grid();
@@ -824,6 +1437,58 @@ public partial class MainWindow : Window
         Grid.SetColumn(toggle, 1);
         grid.Children.Add(toggle);
         return Ui.CardPanel(grid, new Thickness(14, 10, 14, 10));
+    }
+
+    /// <summary>
+    /// The autostart preference. Its switch reflects the real HKCU Run entry (not a cached
+    /// flag), and a failed registration is reported in place and the switch springs back, so
+    /// the UI can never claim a state Windows does not have.
+    /// </summary>
+    private FrameworkElement StartupRow()
+    {
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var text = new StackPanel();
+        text.Children.Add(Ui.Text("Run Swiftwave Tweaks on startup", 13, Ui.TextWhite, FontWeights.SemiBold, wrap: false));
+        var detail = Ui.Text(StartupDetail(), 12, Ui.TextMuted, margin: new Thickness(0, 2, 0, 0));
+        text.Children.Add(detail);
+        grid.Children.Add(text);
+
+        var toggle = new ToggleSwitch { VerticalAlignment = VerticalAlignment.Center };
+        toggle.SetState(SelfStartup.GetState() == SelfStartup.State.Enabled);
+        toggle.Toggled += (_, _) =>
+        {
+            bool requested = toggle.IsChecked == true;
+            var result = SelfStartup.SetEnabled(requested);
+            bool actual = SelfStartup.GetState() == SelfStartup.State.Enabled;
+            toggle.SetState(actual);
+            if (result.Success && actual == requested)
+                SavePrefs(_prefs with { RunOnStartup = requested });
+            detail.Text = result.Success ? StartupDetail() : result.Message;
+            detail.Foreground = result.Success ? Ui.TextMuted : Ui.Bad;
+        };
+        Grid.SetColumn(toggle, 1);
+        grid.Children.Add(toggle);
+        return Ui.CardPanel(grid, new Thickness(14, 10, 14, 10));
+    }
+
+    private static string StartupDetail()
+    {
+        var state = SelfStartup.GetState();
+        if (state == SelfStartup.State.Enabled)
+        {
+            return "Registered for this Windows account: " + SelfStartup.ExecutablePath +
+                   (SelfStartup.IsDevelopmentBuild() ? " (development build path)." : ".") +
+                   " Windows asks for administrator approval (UAC) when it starts with Windows.";
+        }
+        if (state == SelfStartup.State.Mismatched)
+        {
+            return "Windows has a startup entry that points to a different or missing file. Turn this off and on again to repair it.";
+        }
+        return "Not registered. When enabled it starts with Windows for this account only; Windows asks for " +
+               "administrator approval (UAC) at sign-in, and declining that prompt means the app does not launch.";
     }
 
     private void SavePrefs(UserPreferences prefs)
@@ -845,9 +1510,11 @@ public partial class MainWindow : Window
     internal async Task ApplyOptimization(Optimization opt, OptimizationCard card)
     {
         SetBusy(true, $"Applying {opt.Name}…");
+        card.SetBusy();
         var result = await Task.Run(() => opt.Apply());
         StatusText.Text = result.Message + (result.RestartRequired ? " A restart is required." : "");
         SetBusy(false);
+        InvalidateSystemCache(); // the applied change may affect snapshot data
         await card.Refresh();
     }
 
@@ -861,10 +1528,12 @@ public partial class MainWindow : Window
             return;
         }
         SetBusy(true, $"Restoring {opt.Name}…");
+        card.SetBusy();
         var result = await Task.Run(() => opt.Rollback(entry.PreviousState));
         if (result.Status == ApplyStatus.Applied) RollbackStore.Remove(opt.Id);
         StatusText.Text = result.Message + (result.RestartRequired ? " A restart is required." : "");
         SetBusy(false);
+        InvalidateSystemCache(); // the restored setting may affect snapshot data
         await card.Refresh();
     }
 
@@ -891,6 +1560,12 @@ public sealed class OptimizationCard : Border
     private readonly StackPanel _head;
     private readonly ToggleSwitch? _toggle;
     private readonly Button? _run;
+    private Detection _last = new(OptState.Unknown, "", false, "");
+
+    /// <summary>Identity and last detected state, exposed for the headless UI self-test.</summary>
+    internal string OptId => _opt.Id;
+    internal string OptName => _opt.Name;
+    internal Detection Current => _last;
 
     /// <summary>State lines that merely repeat the general status (on/off) carry no extra information.</summary>
     private static readonly HashSet<string> GenericStates = new(StringComparer.OrdinalIgnoreCase)
@@ -968,16 +1643,36 @@ public sealed class OptimizationCard : Border
     private static (string Label, SolidColorBrush Fg, SolidColorBrush Bg)? StatusInfo(Detection d) => d.State switch
     {
         OptState.Optimized => ("Active", Ui.StatusActiveText, Ui.StatusActiveBg),
+        // A committed transaction whose recorded values no longer match is not simply "needs
+        // attention" — the feature is partially configured or the system was changed externally.
+        OptState.NeedsAttention when d.Reason == "E-FOREIGN-EDIT"
+            => ("Incomplete", Ui.StatusAttentionText, Ui.StatusAttentionBg),
+        OptState.NeedsAttention when d.Reason == "E-JOURNAL-CORRUPT"
+            => ("Unverifiable", Ui.StatusAttentionText, Ui.StatusAttentionBg),
         OptState.NeedsAttention => ("Needs attention", Ui.StatusAttentionText, Ui.StatusAttentionBg),
         OptState.Unknown when d.Selectable => ("Available", Ui.StatusAvailableText, Ui.StatusAvailableBg),
         _ => null,
     };
+
+    /// <summary>
+    /// Shows an in-progress state on the card and disables its control while an apply/restore
+    /// runs. <see cref="Update"/> always restores the real state afterwards.
+    /// </summary>
+    public void SetBusy()
+    {
+        if (_toggle is not null) _toggle.IsEnabled = false;
+        if (_run is not null) _run.IsEnabled = false;
+        _state.Visibility = Visibility.Visible;
+        _state.Text = "Working…";
+        _state.Foreground = Ui.Accent;
+    }
 
     private static bool IsGenericStateLine(string current, string reason)
         => reason.Length == 0 && GenericStates.Contains(current.Trim());
 
     public void Update(Detection d)
     {
+        _last = d;
         var status = StatusInfo(d);
         var statusText = (TextBlock)_status.Child;
         if (status is null)

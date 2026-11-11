@@ -69,16 +69,16 @@ public static class DiagnosticsEngine
             issues.Add(new DiagnosticIssue(
                 "Game DVR background recording is enabled.",
                 "Background clip capture continuously uses encoder, GPU and disk resources.",
-                "Disable it on the Gaming page.",
-                "Automatic (Gaming page)", "Low"));
+                "Disable it on the Windows page.",
+                "Automatic (Windows page)", "Low"));
 
         // HAGS
         if (s.HagsMode is not 2)
             issues.Add(new DiagnosticIssue(
                 "Hardware-accelerated GPU scheduling is not explicitly enabled.",
                 "HAGS effects vary by GPU, driver and game; some systems benefit, others do not.",
-                "You can toggle it on the Gaming page. A restart is required. Results are workload-specific.",
-                "Automatic (Gaming page)", "Low"));
+                "You can toggle it on the Windows page. A restart is required. Results are workload-specific.",
+                "Automatic (Windows page)", "Low"));
 
         // Power plan
         if (!s.PowerPlan.Contains("Ultimate", StringComparison.OrdinalIgnoreCase) &&

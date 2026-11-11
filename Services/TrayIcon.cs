@@ -99,21 +99,36 @@ public sealed class TrayIcon : IDisposable
     {
         if (menu is null)
         {
+            // Custom-templated WPF ContextMenu (App.xaml: SwiftwaveTrayMenu). The stock MenuItem
+            // template's icon/check column is what produced the two light squares; the menu owns
+            // its dark surface, rounded corners and hover states while WPF keeps the real popup
+            // semantics (cursor placement, outside-click and Escape dismissal, keyboard navigation).
             menu = new ContextMenu
             {
                 PlacementTarget = owner,
                 Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint,
-                Background = Ui.Card,
-                BorderBrush = Ui.Line,
-                Foreground = Ui.TextWhite
+                Style = Application.Current?.TryFindResource("SwiftwaveTrayMenu") as Style
             };
-            var open = new MenuItem { Header = "Open" };
+            var open = new MenuItem
+            {
+                Header = "Open",
+                Style = Application.Current?.TryFindResource("SwiftwaveTrayMenuItem") as Style
+            };
             open.Click += (_, _) => { menu.IsOpen = false; restore(); };
-            var exitItem = new MenuItem { Header = "Exit" };
+            var exitItem = new MenuItem
+            {
+                Header = "Exit",
+                Style = Application.Current?.TryFindResource("SwiftwaveTrayMenuItem") as Style
+            };
             exitItem.Click += (_, _) => { menu.IsOpen = false; exit(); };
             menu.Items.Add(open);
+            menu.Items.Add(new Separator
+            {
+                Style = Application.Current?.TryFindResource("SwiftwaveTraySeparator") as Style
+            });
             menu.Items.Add(exitItem);
         }
+        menu.PlacementTarget = owner;
         menu.IsOpen = true;
     }
 
@@ -154,7 +169,9 @@ public sealed class TrayIcon : IDisposable
         return IntPtr.Zero;
     }
 
-    [DllImport("shell32.dll", SetLastError = true)]
+    // Unicode entry point: the default ANSI import paired with the Unicode NOTIFYICONDATA
+    // marshaling truncated the tooltip to its first character in the notification area.
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern bool Shell_NotifyIcon(int message, ref NOTIFYICONDATA data);
 
     [DllImport("user32.dll", SetLastError = true)]

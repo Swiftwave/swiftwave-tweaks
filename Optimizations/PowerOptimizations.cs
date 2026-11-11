@@ -10,7 +10,10 @@ public sealed class PowerPlanOptimization : Optimization
     public override string Id => "power-plan";
     public override string Name => "Performance power plan";
     public override string Description => "Activates the built-in Ultimate Performance plan, or High performance when Ultimate Performance is unavailable on this edition. Your previous plan is saved for rollback.";
-    public override string Category => "Power";
+    // Retired from the UI: "Enable Maximum Performance Power Mode" (v3-max-performance-power)
+    // supersedes this card. Kept in the catalog under "Legacy" so History & Restore can still
+    // resolve and revert rollback records created by earlier builds.
+    public override string Category => "Legacy";
     public override Safety Safety => Safety.Safe;
     public override bool RequiresAdmin => true;
 
@@ -157,9 +160,12 @@ powercfg /setactive SCHEME_CURRENT
             int ac = doc.RootElement.GetProperty("ac").GetInt32();
             int dc = doc.RootElement.GetProperty("dc").GetInt32();
             if (ac < 0) { detail = "No previous values recorded."; return false; }
+            // Skip the DC (battery) restore when the captured index was unreadable —
+            // writing the -1 sentinel would corrupt the battery-side policy.
+            var dcLine = dc >= 0 ? $"powercfg /setdcvalueindex SCHEME_CURRENT {SubProcessor} {ThrottleMax} {dc}" : "";
             var script = $@"
 powercfg /setacvalueindex SCHEME_CURRENT {SubProcessor} {ThrottleMax} {ac}
-powercfg /setdcvalueindex SCHEME_CURRENT {SubProcessor} {ThrottleMax} {dc}
+{dcLine}
 powercfg /setactive SCHEME_CURRENT
 ""WRITE:$?"";
 ";

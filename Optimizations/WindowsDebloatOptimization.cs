@@ -56,7 +56,7 @@ public sealed class WindowsSuggestionsOptimization : Optimization
         "Turns off individual Windows suggestion surfaces (lock screen tips, welcome experiences, suggested apps, Get Started, system tips, silent app installs) through their documented HKCU ContentDeliveryManager keys. " +
         "Each key is detected and verified independently; your previous values are captured and restorable. " +
         "This does NOT disable Windows Update, Defender, Firewall, UAC, Xbox services, or any core Windows functionality — and no apps or components are removed.";
-    public override string Category => "Gaming";
+    public override string Category => "Legacy";
     public override Safety Safety => Safety.Safe;
     public override bool RequiresAdmin => false;
 
@@ -88,14 +88,13 @@ public sealed class WindowsSuggestionsOptimization : Optimization
         var toDisable = readings.Where(r => r.Value == 1).ToList();
         if (toDisable.Count == 0) { detail = "All suggestion surfaces are already disabled."; return true; }
 
-        var failures = new List<string>();
         foreach (var r in toDisable)
         {
             try { RegHelper.WriteDword(RegistryHive.CurrentUser, CdmPath, r.ValueName, 0); }
-            catch (System.Exception ex) { failures.Add($"{r.Label}: {ex.Message}"); }
+            catch (System.Exception ex) { SafeLog.Write($"Suggestion key write failed: {r.ValueName}", ex); }
         }
 
-        // Independent re-read to verify every key is now 0.
+        // Independent re-read to verify every key is now 0 — verification decides the result.
         var afterRead = ReadAll();
         var stillOn = afterRead.Where(r => r.Value == 1).ToList();
         if (stillOn.Count > 0)
@@ -104,7 +103,7 @@ public sealed class WindowsSuggestionsOptimization : Optimization
             return false;
         }
         detail = $"Disabled {toDisable.Count} suggestion surface(s); verified all are now off.";
-        return failures.Count == 0;
+        return true;
     }
 
     public override Detection DetectAfterApply() => Detect();

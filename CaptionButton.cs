@@ -17,12 +17,13 @@ namespace SwiftwaveTweaks;
 /// </summary>
 public sealed class CaptionButton : Grid
 {
-    private static readonly Brush IconRest = new SolidColorBrush(Color.FromRgb(0xC9, 0xD5, 0xE1));
-    private static readonly Brush IconHover = new SolidColorBrush(Color.FromRgb(0xF3, 0xF8, 0xFD));
-    private static readonly Brush HoverFillBrush = new SolidColorBrush(Color.FromArgb(0x5A, 0x2E, 0x42, 0x59));
-    private static readonly Brush PressFillBrush = new SolidColorBrush(Color.FromArgb(0x6E, 0x0D, 0x16, 0x22));
-    private static readonly Brush CloseHoverFill = new SolidColorBrush(Color.FromArgb(0x38, 0xE0, 0x6C, 0x6C));
-    private static readonly Brush CloseIcon = new SolidColorBrush(Color.FromRgb(0xE8, 0x8A, 0x8A));
+    // Mutable shared brushes: ThemeService rewrites these on every theme switch.
+    private static readonly SolidColorBrush IconRest = new(Color.FromRgb(0xC9, 0xD5, 0xE1));
+    private static readonly SolidColorBrush IconHover = new(Color.FromRgb(0xF3, 0xF8, 0xFD));
+    private static readonly SolidColorBrush HoverFillBrush = new(Color.FromArgb(0x5A, 0x2E, 0x42, 0x59));
+    private static readonly SolidColorBrush PressFillBrush = new(Color.FromArgb(0x6E, 0x0D, 0x16, 0x22));
+    private static readonly SolidColorBrush CloseHoverFill = new(Color.FromArgb(0x38, 0xE0, 0x6C, 0x6C));
+    private static readonly SolidColorBrush CloseIcon = new(Color.FromRgb(0xE8, 0x8A, 0x8A));
 
     private readonly Border hoverFill;
     private readonly Border pressFill;
@@ -74,12 +75,46 @@ public sealed class CaptionButton : Grid
         MouseLeave += (_, _) => { AnimateFill(hoverFill, 0); AnimateFill(pressFill, 0); AnimateIcon(IconRest); };
         MouseLeftButtonDown += (_, _) => AnimateFill(pressFill, 1);
         MouseLeftButtonUp += (_, _) => Clicked?.Invoke(this, EventArgs.Empty);
+
+        // Keyboard activation (previously mouse-only): Space/Enter trigger the button.
+        Focusable = true;
+        KeyDown += (_, e) =>
+        {
+            if (e.Key is Key.Space or Key.Enter or Key.Return)
+            {
+                e.Handled = true;
+                AnimateFill(pressFill, 1);
+                Clicked?.Invoke(this, EventArgs.Empty);
+            }
+        };
+        KeyUp += (_, e) => { if (e.Key is Key.Space or Key.Enter or Key.Return) AnimateFill(pressFill, 0); };
+        GotKeyboardFocus += (_, _) => AnimateFill(hoverFill, 1);
+        LostKeyboardFocus += (_, _) => { AnimateFill(hoverFill, 0); AnimateFill(pressFill, 0); AnimateIcon(IconRest); };
     }
 
     private void SetIsInChrome(bool value)
         => System.Windows.Shell.WindowChrome.SetIsHitTestVisibleInChrome(this, value);
 
-    /// <summary>Animates the icon stroke colour between the shared frozen brushes.</summary>
+    /// <summary>Rewrites the shared caption colours so future and live buttons match the theme.</summary>
+    internal static void ApplyPalette(ThemePalette p)
+    {
+        IconRest.Color = p.CaptionIcon;
+        IconHover.Color = p.CaptionIconHover;
+        HoverFillBrush.Color = p.CaptionHoverFill;
+        PressFillBrush.Color = p.CaptionPressFill;
+        CloseHoverFill.Color = p.CaptionCloseHoverFill;
+        CloseIcon.Color = p.CaptionCloseIcon;
+    }
+
+    /// <summary>Recolours this instance's cloned icon stroke after a theme switch.</summary>
+    internal void SyncColors()
+    {
+        if (icon.Stroke is not SolidColorBrush stroke) return;
+        stroke.BeginAnimation(SolidColorBrush.ColorProperty, null);
+        stroke.Color = danger ? CloseIcon.Color : IconRest.Color;
+    }
+
+    /// <summary>Animates the icon stroke colour between the shared theme brushes.</summary>
     private void AnimateIcon(Brush target)
     {
         var to = ((SolidColorBrush)target).Color;
