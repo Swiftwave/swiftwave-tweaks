@@ -44,7 +44,10 @@ internal static class ProcessRunner
     /// <summary>Runs a PowerShell script without elevation and captures its output.</summary>
     public static (int ExitCode, string Output) RunPowerShell(string script)
     {
-        var encoded = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(script));
+        // Suppress the progress stream: when stderr is redirected, PowerShell serialises progress
+        // records as a trailing "#< CLIXML" block, which breaks exact-output parsing downstream.
+        var wrapped = "$ProgressPreference='SilentlyContinue';" + script;
+        var encoded = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(wrapped));
         var r = RunCapture("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -EncodedCommand {encoded}");
         return r is null ? (-1, "PowerShell could not be started.") : r.Value;
     }

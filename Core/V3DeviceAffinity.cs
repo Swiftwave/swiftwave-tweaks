@@ -154,11 +154,18 @@ public sealed class DeviceAffinityOptimization : Optimization
             return false;
         }
 
-        Journal.Commit(Id, _plan.SelectMany(d => new[]
+        Journal.Commit(Id, _plan.SelectMany(d =>
         {
-            new JournalTarget { Target = TargetKey(d, "DevicePolicy"), Kind = "DWord", Prior = Enc(d.PriorPolicy), New = "4" },
-            new JournalTarget { Target = TargetKey(d, "DevicePriority"), Kind = "DWord", Prior = Enc(d.PriorPriority), New = "3" },
-            new JournalTarget { Target = TargetKey(d, "AssignmentSetOverride"), Kind = "Binary", Prior = d.PriorMaskB64, New = Convert.ToBase64String(mask) }
+            var targets = new List<JournalTarget>
+            {
+                new() { Target = TargetKey(d, "DevicePolicy"), Kind = "DWord", Prior = Enc(d.PriorPolicy), New = "4" },
+                new() { Target = TargetKey(d, "AssignmentSetOverride"), Kind = "Binary", Prior = d.PriorMaskB64, New = Convert.ToBase64String(mask) }
+            };
+            // DevicePriority is only written for the primary device (see ApplyChange); journaling it
+            // for the others would make Detect() report a foreign edit on a perfectly good apply.
+            if (d.Primary)
+                targets.Add(new JournalTarget { Target = TargetKey(d, "DevicePriority"), Kind = "DWord", Prior = Enc(d.PriorPriority), New = "3" });
+            return targets;
         }));
 
         detail = Ledger();
@@ -268,23 +275,34 @@ public sealed class DeviceAffinityOptimization : Optimization
 
         foreach (var cls in wanted)
         {
-            var device = devices.FirstOrDefault(d => d.Class == cls);
-            if (device is null) { _skipped.Add($"{cls}: E-NO-DEVICE"); continue; }
-            if (PnpDeviceService.IsHardDenied(device.VendorDevice))
+            // Try every device of the class: the first one is often the boot display or a
+            // virtual/unhealthy device, which used to drop the whole class from the plan.
+            PnpDeviceInfo? device = null;
+            var candidates = devices.Where(d => d.Class == cls).ToList();
+            if (candidates.Count == 0) { _skipped.Add($"{cls}: E-NO-DEVICE"); continue; }
+
+            foreach (var candidate in candidates)
             {
-                _skipped.Add($"{device.Name}: E-DEV-SYSTEM-CLASS (hard-deny vendor/device)");
-                continue;
+                if (PnpDeviceService.IsHardDenied(candidate.VendorDevice))
+                {
+                    _skipped.Add($"{candidate.Name}: E-DEV-SYSTEM-CLASS (hard-deny vendor/device)");
+                    continue;
+                }
+                if (!candidate.Healthy)
+                {
+                    _skipped.Add($"{candidate.Name}: E-DEV-CONFIG-ERROR");
+                    continue;
+                }
+                if (cls == PnpDeviceClass.Display && bootDisplays.Contains(candidate.PnpId))
+                {
+                    _skipped.Add($"{candidate.Name}: E-DEV-BOOT-DISPLAY (boot display requires explicit confirmation)");
+                    continue;
+                }
+                device = candidate;
+                break;
             }
-            if (!device.Healthy)
-            {
-                _skipped.Add($"{device.Name}: E-DEV-CONFIG-ERROR");
-                continue;
-            }
-            if (cls == PnpDeviceClass.Display && bootDisplays.Contains(device.PnpId))
-            {
-                _skipped.Add($"{device.Name}: E-DEV-BOOT-DISPLAY (boot display requires explicit confirmation)");
-                continue;
-            }
+
+            if (device is null) continue;
 
             string keyPath = device.EnumRoot + @"\" + AffinitySub;
             bool priorKeyExisted = KeyExists(keyPath);
@@ -307,9 +325,9 @@ public sealed class DeviceAffinityOptimization : Optimization
         }
 
         if (_plan.Count == 0)
-            _planReason = _skipped.FirstOrDefault()?.Contains("E-NO-DEVICE") == true
-                ? "E-NO-DEVICE"
-                : _skipped.FirstOrDefault() ?? "E-NO-DEVICE";
+            _planReason = _skipped.Count > 0
+                ? "E-NO-DEVICE (" + string.Join("; ", _skipped) + ")"
+                : "E-NO-DEVICE";
     }
 
     // ------------------------------------------------------------------ helpers

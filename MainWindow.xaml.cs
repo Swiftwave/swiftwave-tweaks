@@ -117,25 +117,25 @@ public partial class MainWindow : Window
         };
     }
 
-    /// <summary>"3.0.0" → "3.0" — the visible footer reads v3.0, derived from the project version.</summary>
+    /// <summary>"3.1.0" → "3.1" — the visible footer reads v3.1, derived from the project version.</summary>
     internal static string MajorMinorVersion(string? informational)
     {
         if (informational is not null && Version.TryParse(informational.Split('+')[0], out var v))
             return $"{v.Major}.{v.Minor}";
-        return informational ?? "3.0";
+        return informational ?? "3.1";
     }
 
-    /// <summary>"3.0.0" → "3" — short form used by the About card.</summary>
+    /// <summary>"3.1.0" → "3.1" — short form used by the About card.</summary>
     internal static string ShortVersion(string? informational)
     {
         if (informational is not null && Version.TryParse(informational.Split('+')[0], out var v))
             return v.Minor == 0 && v.Build <= 0 ? v.Major.ToString() : $"{v.Major}.{v.Minor}";
-        return informational ?? "2";
+        return informational ?? "3.1";
     }
 
     internal static string FullVersion()
         => Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "3.0.0";
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion?.Split('+')[0] ?? "3.1.0";
 
     // ───────────────────────────── window chrome ─────────────────────────────
 

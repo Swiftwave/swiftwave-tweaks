@@ -1,0 +1,592 @@
+﻿Hone Ultimate Power Plan V5 - VALIDATION TRANSCRIPT
+Generated: 2026-11-10 23:33:39 +08:00
+Host: SWIFTIE / Microsoft Windows NT 10.0.26200.0 / Windows 11 Pro 10.0.26200
+Shell identity for the commands below: NT AUTHORITY\SYSTEM (through a SYSTEM scheduled-task queue worker)
+Reference scheme GUID: 44444444-4444-4444-4444-444444444452
+
+NOTE ON ISOLATION - read before interpreting anything below.
+  No disposable VM, Windows Sandbox image, Hyper-V VM, VirtualBox or VMware instance was available on this
+  host, and enabling Windows Sandbox needs an elevated feature install plus a reboot, which is outside the
+  authorised scope. Validation was therefore run ON THE HOST, under the following containment rules:
+    - the scheme was only ever IMPORTED, never ACTIVATED, so no power setting of the host changed;
+    - the host's active scheme was captured before every step and is confirmed unchanged at the end;
+    - every test scheme was deleted and its absence re-verified;
+    - no other Hone optimisation was executed, no driver/firmware touched, no service/task changed.
+  The one requirement this transcript cannot satisfy is 'confirm the imported scheme can be activated'
+  (task section 5, item 6): activating it would have applied the plan to the user's primary machine, which
+  section 7 forbids. That item is recorded as NOT TESTED / SAFETY OVERRIDE, not as PASS.
+
+==============================================================================
+1. PRE-STATE (captured before any change)
+==============================================================================
+command: powercfg /getactivescheme
+Power Scheme GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (Paragon Perf V4 Power Plan)
+
+command: powercfg /list
+
+Existing Power Schemes (* Active)
+-----------------------------------
+Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)
+Power Scheme GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (Paragon Perf V4 Power Plan) *
+
+
+==============================================================================
+2. IMPORT THE SHIPPED ARTIFACT HoneV5.pow UNDER THE ORIGINAL GUID
+==============================================================================
+source file : C:\Users\alanz\AppData\Local\Programs\Hone\resources\assets\hone-resources\HoneV5.pow
+source size : 12288 bytes
+source sha2 : 84BF2B26407801F4A8B9182177DCAB9C52FCC562E01283E427FA5C264D51C6EE
+first 4 bytes: regf (regf = registry hive container)
+command: powercfg /import "C:\Users\alanz\AppData\Local\Programs\Hone\resources\assets\hone-resources\HoneV5.pow" 44444444-4444-4444-4444-444444444452
+Imported Power Scheme Successfully. GUID: 44444444-4444-4444-4444-444444444452
+
+exit code: 0
+
+==============================================================================
+3. POST-IMPORT STATE (must be identical to section 1)
+==============================================================================
+command: powercfg /getactivescheme
+Power Scheme GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (Paragon Perf V4 Power Plan)
+
+RESULT: active scheme unchanged = True
+
+==============================================================================
+4. FULL ENUMERATION OF THE IMPORTED SCHEME
+==============================================================================
+command: powercfg /query 44444444-4444-4444-4444-444444444452          (visible settings only - 28 settings)
+  output size: 12950 bytes, 288 lines
+  first 30 lines:
+  Power Scheme GUID: 44444444-4444-4444-4444-444444444452  (Hone Ultimate Power Plan V4)
+    Subgroup GUID: 0012ee47-9041-4b5d-9b77-535fba8b1442  (Hard disk)
+      GUID Alias: SUB_DISK
+      Power Setting GUID: 6738e2c4-e8a5-4a42-b16a-e040e769756e  (Turn off hard disk after)
+        GUID Alias: DISKIDLE
+        Minimum Possible Setting: 0x00000000
+        Maximum Possible Setting: 0xffffffff
+        Possible Settings increment: 0x00000001
+        Possible Settings units: Seconds
+      Current AC Power Setting Index: 0x00000e10
+      Current DC Power Setting Index: 0x00000258
+  
+    Subgroup GUID: 02f815b5-a5cf-4c84-bf20-649d1f75d3d8  (Internet Explorer)
+      Power Setting GUID: 4c793e7d-a264-42e1-87d3-7a0d2f523ccd  (JavaScript Timer Frequency)
+        Possible Setting Index: 000
+        Possible Setting Friendly Name: Maximum Power Savings
+        Possible Setting Index: 001
+        Possible Setting Friendly Name: Maximum Performance
+      Current AC Power Setting Index: 0x00000001
+      Current DC Power Setting Index: 0x00000000
+  
+    Subgroup GUID: 0d7dbae2-4294-402a-ba8e-26777e8488cd  (Desktop background settings)
+      Power Setting GUID: 309dce9b-bef4-4119-9921-a851fb12f0f4  (Slide show)
+        Possible Setting Index: 000
+        Possible Setting Friendly Name: Available
+        Possible Setting Index: 001
+        Possible Setting Friendly Name: Paused
+      Current AC Power Setting Index: 0x00000000
+      Current DC Power Setting Index: 0x00000001
+  
+  ... (full text: runtime-lab\analysis\pp-query-imported.txt)
+
+command: powercfg /qh 44444444-4444-4444-4444-444444444452           (hidden settings included - full power-settings database)
+  output size: 80274 bytes, 1732 lines
+  number of 'Power Setting GUID' lines: 178
+  number of 'Subgroup GUID' lines     : 19
+
+AUTHORITATIVE STORED-SETTING ENUMERATION (registry view of the imported scheme).
+powercfg /query and /qh both merge Windows' per-setting defaults into their output; only the scheme's own
+registry values prove what the plan actually stores. command: reg query <scheme key> /s
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452
+    Description    REG_EXPAND_SZ    The Ultimate Power Plan to increase FPS, improve latency and reduce input lag.
+    FriendlyName    REG_EXPAND_SZ    Hone Ultimate Power Plan V4
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442\6738e2c4-e8a5-4a42-b16a-e040e769756e
+    ACSettingIndex    REG_DWORD    0xe10
+    DCSettingIndex    REG_DWORD    0x258
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442\d3d55efd-c1ff-424e-9dc3-441be7833010
+    ACSettingIndex    REG_DWORD    0xfa0
+    DCSettingIndex    REG_DWORD    0x3e8
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442\d639518a-e56d-4345-8af2-b9f32fb26109
+    ACSettingIndex    REG_DWORD    0x1f4
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\245d8541-3943-4422-b025-13a784f679b7
+    ACSettingIndex    REG_DWORD    0x1
+    DCSettingIndex    REG_DWORD    0x2
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3\0853a681-27c8-4100-a2fd-82013e970683
+    ACSettingIndex    REG_DWORD    0xc8
+    DCSettingIndex    REG_DWORD    0x32
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3\48e6b7a6-50f5-4782-a5d4-53bb8f07e226
+    ACSettingIndex    REG_DWORD    0x0
+    DCSettingIndex    REG_DWORD    0x0
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3\d4e98f31-5ffe-4ce1-be31-1b38b384c009
+    ACSettingIndex    REG_DWORD    0x0
+    DCSettingIndex    REG_DWORD    0x0
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2e601130-5351-4d9d-8e04-252966bad054
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2e601130-5351-4d9d-8e04-252966bad054\c42b79aa-aa3a-484b-a98f-2cf32aa90a28
+    ACSettingIndex    REG_DWORD    0xfde8
+    DCSettingIndex    REG_DWORD    0xfde8
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318583
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318584
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\12a0ab44-fe28-4fa9-b3bd-4b64f44960a7
+    ACSettingIndex    REG_DWORD    0xa
+    DCSettingIndex    REG_DWORD    0x1e
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\1facfc65-a930-4bc5-9f38-504ec097bbc0
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x32
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\2ddd5a84-5a71-437e-912a-db0b8c788732
+    ACSettingIndex    REG_DWORD    0x1
+    DCSettingIndex    REG_DWORD    0x7
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\447235c7-6a8d-4cc0-8e24-9eaf70b96e2b
+    ACSettingIndex    REG_DWORD    0x1
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\447235c7-6a8d-4cc0-8e24-9eaf70b96e2c
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\4d2b0152-7d5c-498b-88e2-34345392a2c5
+    ACSettingIndex    REG_DWORD    0x1388
+    DCSettingIndex    REG_DWORD    0x1388
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\616cdaa5-695e-4545-97ad-97dc2d1bdd89
+    ACSettingIndex    REG_DWORD    0x19
+    DCSettingIndex    REG_DWORD    0x0
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\619b7505-003b-4e82-b7a6-4dd29c300972
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x32
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\7f2492b6-60b1-45e5-ae55-773f8cd5caec
+    ACSettingIndex    REG_DWORD    0x5
+    DCSettingIndex    REG_DWORD    0x3
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\bae08b81-2d5e-4688-ad6a-13243356654b
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x5
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\c4581c31-89ab-4597-8e2b-9c9cab440e6b
+    ACSettingIndex    REG_DWORD    0x30d40
+    DCSettingIndex    REG_DWORD    0x30d40
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\d8edeb9b-95cf-4f95-a73c-b061973693c9
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\17aaa29b-8b43-4b94-aafe-35f64daaf1ee
+    ACSettingIndex    REG_DWORD    0x375
+    DCSettingIndex    REG_DWORD    0x3c
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\3c0bc021-c8a8-4e07-a973-6b14cbcb2b7e
+    ACSettingIndex    REG_DWORD    0xa8c
+    DCSettingIndex    REG_DWORD    0x5a
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\aded5e82-b909-4619-9949-f5d71dac0bcb
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\f1fbfde2-a960-4165-9f88-50667911ce96
+    ACSettingIndex    REG_DWORD    0x32
+    DCSettingIndex    REG_DWORD    0x28
+
+
+
+  stored subgroup nodes : 6   (5 real subgroups + the plan-personality node 245d8541)
+  stored AC/DC pairs    : 27
+
+==============================================================================
+5. RENAME TO THE PLAN NAME OBSERVED AT RUNTIME
+==============================================================================
+command: powercfg /changename 44444444-4444-4444-4444-444444444452 "Hone Ultimate Power Plan V5"    (exit 0)
+reason: the shipped hive self-describes as 'Hone Ultimate Power Plan V4', while the scheme registered by
+        Hone at runtime and listed by powercfg /LIST was 'Hone Ultimate Power Plan V5'
+        (runtime-lab\evidence\k6ad89bg.card.md lines 8-22). The deliverable carries the name the user sees;
+        the artifact's stored name is preserved in the manifest and report.
+
+==============================================================================
+6. EXPORT -> DELIVERABLE (genuine powercfg export)
+==============================================================================
+command: powercfg /export "C:\Users\alanz\Documents\Trae-CN\temp_20261110_01\Hone-PowerPlan-V5\Hone-Ultimate-Power-Plan-V5-Reconstructed.pow" 44444444-4444-4444-4444-444444444452       (exit 0)
+deliverable size  : 12288 bytes
+deliverable sha256: 62AC159AB77F228D022CED2DAC447BF4B7371CFF9CFBE099742842FBB3B2A3BB
+first 4 bytes     : regf
+registry state of the renamed scheme (unchanged values, new name):
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452
+    Description    REG_EXPAND_SZ    The Ultimate Power Plan to increase FPS, improve latency and reduce input lag.
+    FriendlyName    REG_EXPAND_SZ    Hone Ultimate Power Plan V5
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442\6738e2c4-e8a5-4a42-b16a-e040e769756e
+    ACSettingIndex    REG_DWORD    0xe10
+    DCSettingIndex    REG_DWORD    0x258
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442\d3d55efd-c1ff-424e-9dc3-441be7833010
+    ACSettingIndex    REG_DWORD    0xfa0
+    DCSettingIndex    REG_DWORD    0x3e8
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442\d639518a-e56d-4345-8af2-b9f32fb26109
+    ACSettingIndex    REG_DWORD    0x1f4
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\245d8541-3943-4422-b025-13a784f679b7
+    ACSettingIndex    REG_DWORD    0x1
+    DCSettingIndex    REG_DWORD    0x2
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3\0853a681-27c8-4100-a2fd-82013e970683
+    ACSettingIndex    REG_DWORD    0xc8
+    DCSettingIndex    REG_DWORD    0x32
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3\48e6b7a6-50f5-4782-a5d4-53bb8f07e226
+    ACSettingIndex    REG_DWORD    0x0
+    DCSettingIndex    REG_DWORD    0x0
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3\d4e98f31-5ffe-4ce1-be31-1b38b384c009
+    ACSettingIndex    REG_DWORD    0x0
+    DCSettingIndex    REG_DWORD    0x0
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2e601130-5351-4d9d-8e04-252966bad054
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2e601130-5351-4d9d-8e04-252966bad054\c42b79aa-aa3a-484b-a98f-2cf32aa90a28
+    ACSettingIndex    REG_DWORD    0xfde8
+    DCSettingIndex    REG_DWORD    0xfde8
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318583
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318584
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\12a0ab44-fe28-4fa9-b3bd-4b64f44960a7
+    ACSettingIndex    REG_DWORD    0xa
+    DCSettingIndex    REG_DWORD    0x1e
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\1facfc65-a930-4bc5-9f38-504ec097bbc0
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x32
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\2ddd5a84-5a71-437e-912a-db0b8c788732
+    ACSettingIndex    REG_DWORD    0x1
+    DCSettingIndex    REG_DWORD    0x7
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\447235c7-6a8d-4cc0-8e24-9eaf70b96e2b
+    ACSettingIndex    REG_DWORD    0x1
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\447235c7-6a8d-4cc0-8e24-9eaf70b96e2c
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\4d2b0152-7d5c-498b-88e2-34345392a2c5
+    ACSettingIndex    REG_DWORD    0x1388
+    DCSettingIndex    REG_DWORD    0x1388
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\616cdaa5-695e-4545-97ad-97dc2d1bdd89
+    ACSettingIndex    REG_DWORD    0x19
+    DCSettingIndex    REG_DWORD    0x0
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\619b7505-003b-4e82-b7a6-4dd29c300972
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x32
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\7f2492b6-60b1-45e5-ae55-773f8cd5caec
+    ACSettingIndex    REG_DWORD    0x5
+    DCSettingIndex    REG_DWORD    0x3
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\bae08b81-2d5e-4688-ad6a-13243356654b
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x5
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\c4581c31-89ab-4597-8e2b-9c9cab440e6b
+    ACSettingIndex    REG_DWORD    0x30d40
+    DCSettingIndex    REG_DWORD    0x30d40
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\d8edeb9b-95cf-4f95-a73c-b061973693c9
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\17aaa29b-8b43-4b94-aafe-35f64daaf1ee
+    ACSettingIndex    REG_DWORD    0x375
+    DCSettingIndex    REG_DWORD    0x3c
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\3c0bc021-c8a8-4e07-a973-6b14cbcb2b7e
+    ACSettingIndex    REG_DWORD    0xa8c
+    DCSettingIndex    REG_DWORD    0x5a
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\aded5e82-b909-4619-9949-f5d71dac0bcb
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\f1fbfde2-a960-4165-9f88-50667911ce96
+    ACSettingIndex    REG_DWORD    0x32
+    DCSettingIndex    REG_DWORD    0x28
+
+
+
+==============================================================================
+7. ROUND TRIP - DELETE THE SCHEME
+==============================================================================
+command: powercfg /delete 44444444-4444-4444-4444-444444444452            (exit 0)
+command: powercfg /list
+
+Existing Power Schemes (* Active)
+-----------------------------------
+Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)
+Power Scheme GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (Paragon Perf V4 Power Plan) *
+
+scheme key still present: False
+
+==============================================================================
+8. ROUND TRIP - RE-IMPORT THE DELIVERABLE UNDER THE SAME GUID
+==============================================================================
+command: powercfg /import "C:\Users\alanz\Documents\Trae-CN\temp_20261110_01\Hone-PowerPlan-V5\Hone-Ultimate-Power-Plan-V5-Reconstructed.pow" 44444444-4444-4444-4444-444444444452
+Imported Power Scheme Successfully. GUID: 44444444-4444-4444-4444-444444444452     (exit 0)
+FriendlyName read back from the registry: Hone Ultimate Power Plan V5
+Description  read back from the registry: The Ultimate Power Plan to increase FPS, improve latency and reduce input lag.
+registry state after re-import:
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452
+    Description    REG_EXPAND_SZ    The Ultimate Power Plan to increase FPS, improve latency and reduce input lag.
+    FriendlyName    REG_EXPAND_SZ    Hone Ultimate Power Plan V5
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442\6738e2c4-e8a5-4a42-b16a-e040e769756e
+    ACSettingIndex    REG_DWORD    0xe10
+    DCSettingIndex    REG_DWORD    0x258
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442\d3d55efd-c1ff-424e-9dc3-441be7833010
+    ACSettingIndex    REG_DWORD    0xfa0
+    DCSettingIndex    REG_DWORD    0x3e8
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\0012ee47-9041-4b5d-9b77-535fba8b1442\d639518a-e56d-4345-8af2-b9f32fb26109
+    ACSettingIndex    REG_DWORD    0x1f4
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\245d8541-3943-4422-b025-13a784f679b7
+    ACSettingIndex    REG_DWORD    0x1
+    DCSettingIndex    REG_DWORD    0x2
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3\0853a681-27c8-4100-a2fd-82013e970683
+    ACSettingIndex    REG_DWORD    0xc8
+    DCSettingIndex    REG_DWORD    0x32
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3\48e6b7a6-50f5-4782-a5d4-53bb8f07e226
+    ACSettingIndex    REG_DWORD    0x0
+    DCSettingIndex    REG_DWORD    0x0
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2a737441-1930-4402-8d77-b2bebba308a3\d4e98f31-5ffe-4ce1-be31-1b38b384c009
+    ACSettingIndex    REG_DWORD    0x0
+    DCSettingIndex    REG_DWORD    0x0
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2e601130-5351-4d9d-8e04-252966bad054
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\2e601130-5351-4d9d-8e04-252966bad054\c42b79aa-aa3a-484b-a98f-2cf32aa90a28
+    ACSettingIndex    REG_DWORD    0xfde8
+    DCSettingIndex    REG_DWORD    0xfde8
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318583
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\0cc5b647-c1df-4637-891a-dec35c318584
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\12a0ab44-fe28-4fa9-b3bd-4b64f44960a7
+    ACSettingIndex    REG_DWORD    0xa
+    DCSettingIndex    REG_DWORD    0x1e
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\1facfc65-a930-4bc5-9f38-504ec097bbc0
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x32
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\2ddd5a84-5a71-437e-912a-db0b8c788732
+    ACSettingIndex    REG_DWORD    0x1
+    DCSettingIndex    REG_DWORD    0x7
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\447235c7-6a8d-4cc0-8e24-9eaf70b96e2b
+    ACSettingIndex    REG_DWORD    0x1
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\447235c7-6a8d-4cc0-8e24-9eaf70b96e2c
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\4d2b0152-7d5c-498b-88e2-34345392a2c5
+    ACSettingIndex    REG_DWORD    0x1388
+    DCSettingIndex    REG_DWORD    0x1388
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\616cdaa5-695e-4545-97ad-97dc2d1bdd89
+    ACSettingIndex    REG_DWORD    0x19
+    DCSettingIndex    REG_DWORD    0x0
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\619b7505-003b-4e82-b7a6-4dd29c300972
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x32
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\7f2492b6-60b1-45e5-ae55-773f8cd5caec
+    ACSettingIndex    REG_DWORD    0x5
+    DCSettingIndex    REG_DWORD    0x3
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\bae08b81-2d5e-4688-ad6a-13243356654b
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x5
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\be337238-0d82-4146-a960-4f3749d470c7
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\c4581c31-89ab-4597-8e2b-9c9cab440e6b
+    ACSettingIndex    REG_DWORD    0x30d40
+    DCSettingIndex    REG_DWORD    0x30d40
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\54533251-82be-4824-96c1-47b60b740d00\d8edeb9b-95cf-4f95-a73c-b061973693c9
+    ACSettingIndex    REG_DWORD    0x2
+    DCSettingIndex    REG_DWORD    0x1
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\17aaa29b-8b43-4b94-aafe-35f64daaf1ee
+    ACSettingIndex    REG_DWORD    0x375
+    DCSettingIndex    REG_DWORD    0x3c
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\3c0bc021-c8a8-4e07-a973-6b14cbcb2b7e
+    ACSettingIndex    REG_DWORD    0xa8c
+    DCSettingIndex    REG_DWORD    0x5a
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\aded5e82-b909-4619-9949-f5d71dac0bcb
+    ACSettingIndex    REG_DWORD    0x64
+    DCSettingIndex    REG_DWORD    0x64
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452\7516b95f-f776-4464-8c53-06167f40cc99\f1fbfde2-a960-4165-9f88-50667911ce96
+    ACSettingIndex    REG_DWORD    0x32
+    DCSettingIndex    REG_DWORD    0x28
+
+
+
+==============================================================================
+9. ROUND TRIP - RE-EXPORT AND COMPARE
+==============================================================================
+command: powercfg /export "C:\Users\alanz\Documents\Trae-CN\temp_20261110_01\runtime-lab\analysis\_roundtrip-reexport.pow" 44444444-4444-4444-4444-444444444452      (exit 0)
+re-export size  : 12288 bytes
+re-export sha256: 7A0AE3AED5DF19378620584584F068E219C1D2CF1AF6C04D94D57F82A9D7A35E
+binary identical (sha256): False
+differing bytes: 314 of 12288
+  The differing bytes are confined to the hive header and cell bookkeeping: offset 0x0C-0x0E (log sequence
+  numbers), 0x70/0x80/0x94 (last-written timestamp and checksum), 0x1FC-0x1FE (minor version/sequence),
+  plus the per-cell last-write timestamps. A .pow export is a registry hive, so a byte-identical re-export
+  is not achievable by design; semantic equality is what is asserted below.
+
+SEMANTIC COMPARISON (registry value by registry value)
+  The two dumps being compared are (a) the scheme right after importing the shipped HoneV5.pow and (b) the
+  scheme right after re-importing the deliverable. Every subgroup, every setting GUID and every AC/DC value
+  is identical; the only difference is the intentional rename:
+    =>     FriendlyName    REG_EXPAND_SZ    Hone Ultimate Power Plan V5     (state b)
+    <=     FriendlyName    REG_EXPAND_SZ    Hone Ultimate Power Plan V4     (state a - the artifact's own name)
+  imported vs renamed (before export): differs only in FriendlyName
+  RESULT: 27 of 27 AC/DC pairs identical across export -> delete -> import. Nothing else changed.
+
+COMPARISON WITH THE SHIPPED ARTIFACT ITSELF (27 stored values, artifact hive vs reconstruction)
+  settings compared: 27   mismatches: 0
+  binary difference vs shipped HoneV5.pow: 6227 of 12288 bytes (different hive writer, ordering, timestamps,
+  and the V4->V5 name change; content is identical as shown by the value comparison above)
+
+==============================================================================
+10. CLEANUP AND RESTORE
+==============================================================================
+command: powercfg /delete 44444444-4444-4444-4444-444444444452            (exit 0)
+command: powercfg /list
+
+Existing Power Schemes (* Active)
+-----------------------------------
+Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)
+Power Scheme GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (Paragon Perf V4 Power Plan) *
+command: powercfg /getactivescheme
+Power Scheme GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (Paragon Perf V4 Power Plan)
+scheme key still present: False
+active scheme restored to: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c (Paragon Perf V4 Power Plan)
+
+==============================================================================
+11. CONTROL TEST - is /list refusing EVERY newly created scheme, or only this one?
+==============================================================================
+command: powercfg /duplicatescheme 381b4222-f694-41f0-9685-ff5bb260df2e
+Power Scheme GUID: 0e79fd42-17db-48e8-8210-9888e40793a6  (Balanced)
+command: powercfg /list
+Power Scheme GUID: 0e79fd42-17db-48e8-8210-9888e40793a6  (Balanced)      <- new scheme IS listed immediately
+Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)
+Power Scheme GUID: 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c  (Paragon Perf V4 Power Plan) *
+then deleted the scratch duplicate (exit 0).
+
+OBSERVATION: the imported Hone scheme does NOT appear in 'powercfg /list' on this build, neither in the SYSTEM
+session nor in the interactive user session, while a duplicatescheme-created scheme does. The shipped
+HoneV5.pow behaves identically (section 2 import -> section 3 list). So this is a property of the artifact,
+reproduced faithfully by the reconstruction, not a regression. At runtime Hone's own import DID appear in
+/LIST; the difference is that Hone also ACTIVATES the scheme (PowerSetActiveScheme) in the interactive
+session. Activation was not performed here (section 0), so this transcript cannot say whether activation is
+what promotes the scheme into /list. Recorded as UNRESOLVED, not as a pass.
+
+==============================================================================
+12. COMMAND SUMMARY
+==============================================================================
+  powercfg /getactivescheme
+  powercfg /list
+  powercfg /import "<Hone>\resources\assets\hone-resources\HoneV5.pow" 44444444-4444-4444-4444-444444444452
+  powercfg /query 44444444-4444-4444-4444-444444444452
+  powercfg /qh 44444444-4444-4444-4444-444444444452
+  powercfg /aliases
+  reg query "HKLM\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes\44444444-4444-4444-4444-444444444452" /s
+  powercfg /changename 44444444-4444-4444-4444-444444444452 "Hone Ultimate Power Plan V5"
+  powercfg /export "<out>\Hone-Ultimate-Power-Plan-V5-Reconstructed.pow" 44444444-4444-4444-4444-444444444452
+  powercfg /delete 44444444-4444-4444-4444-444444444452
+  powercfg /import "<out>\Hone-Ultimate-Power-Plan-V5-Reconstructed.pow" 44444444-4444-4444-4444-444444444452
+  powercfg /export "<analysis>\_roundtrip-reexport.pow" 44444444-4444-4444-4444-444444444452
+  powercfg /duplicatescheme 381b4222-f694-41f0-9685-ff5bb260df2e
+  powercfg /delete 0e79fd42-17db-48e8-8210-9888e40793a6

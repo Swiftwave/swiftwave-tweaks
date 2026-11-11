@@ -143,9 +143,33 @@ public abstract class MultiOpOptimization : Optimization
     {
         _skipped.Clear();
         var applied = new List<int>();
+        Dictionary<int, (string? Error, bool Skipped)>? taskResults = null;
         for (int i = 0; i < Operations.Count; i++)
         {
-            var (err, skipped) = ApplyOne(i, Operations[i]);
+            if (Operations[i].Kind == OpKind.TaskEnable && taskResults is null)
+            {
+                int count = 1;
+                while (i + count < Operations.Count && Operations[i + count].Kind == OpKind.TaskEnable)
+                    count++;
+                var batch = Operations.Skip(i).Take(count)
+                    .Select(op => (op.TaskPath, op.BoolValue)).ToArray();
+                var results = ScheduledTaskService.SetEnabled(batch);
+                taskResults = new Dictionary<int, (string? Error, bool Skipped)>();
+                for (int j = 0; j < results.Count; j++)
+                {
+                    var ok = results[j];
+                    taskResults[i + j] = ok is null
+                        ? (null, true)
+                        : (ok.Value ? null : "task operation rejected", false);
+                }
+            }
+            else if (Operations[i].Kind != OpKind.TaskEnable)
+            {
+                taskResults = null;
+            }
+            var (err, skipped) = Operations[i].Kind == OpKind.TaskEnable
+                ? taskResults![i]
+                : ApplyOne(Operations[i]);
             if (err is not null)
             {
                 // Partial-application failure: undo everything already written, in reverse order,
@@ -189,7 +213,7 @@ public abstract class MultiOpOptimization : Optimization
         return true;
     }
 
-    private (string? Error, bool Skipped) ApplyOne(int index, Operation op)
+    private (string? Error, bool Skipped) ApplyOne(Operation op)
     {
         try
         {
@@ -217,15 +241,6 @@ public abstract class MultiOpOptimization : Optimization
                 case OpKind.RegDelete:
                     RegHelper.DeleteValue(op.Hive, op.Path, op.Name);
                     return (null, false);
-                case OpKind.TaskEnable:
-                {
-                    var ok = op.BoolValue
-                        ? ScheduledTaskService.ReEnable(op.TaskPath)
-                        : ScheduledTaskService.Disable(op.TaskPath);
-                    // ok == null means the task does not exist on this build: skip, don't fail.
-                    if (ok is null) return (null, true);
-                    return (ok.Value ? null : "task operation rejected", false);
-                }
                 case OpKind.NetshCommand:
                 case OpKind.BcdEdit:
                 {
@@ -300,7 +315,12 @@ public abstract class MultiOpOptimization : Optimization
                     return null;
                 case OpKind.TaskEnable:
                     if (prior.Existed && prior.PriorTaskEnabled)
+                    {
+                        // A task skipped during apply is still enabled; re-enabling it would fail
+                        // on ACL-protected tasks and wrongly report the rollback as failed.
+                        if (ScheduledTaskService.IsEnabled(op.TaskPath) == true) return null;
                         return ScheduledTaskService.ReEnable(op.TaskPath) ? null : "could not re-enable task";
+                    }
                     return null;
                 case OpKind.PowerScheme:
                     if (prior.Existed && prior.PriorData is { Length: 36 } guid)

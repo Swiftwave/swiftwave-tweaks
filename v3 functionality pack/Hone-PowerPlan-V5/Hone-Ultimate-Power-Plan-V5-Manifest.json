@@ -1,0 +1,272 @@
+﻿{
+    "manifest_version":  "1.0",
+    "generated_utc":  "2026-11-10T15:36:54Z",
+    "generated_local":  "2026-11-10 23:36:54 +08:00",
+    "host":  "SWIFTIE",
+    "scheme":  {
+                   "guid":  "44444444-4444-4444-4444-444444444452",
+                   "guid_reused":  true,
+                   "guid_conflict":  false,
+                   "friendly_name":  "Hone Ultimate Power Plan V5",
+                   "friendly_name_in_shipped_artifact":  "Hone Ultimate Power Plan V4",
+                   "description":  "The Ultimate Power Plan to increase FPS, improve latency and reduce input lag.",
+                   "personality_ac":  1,
+                   "personality_dc":  2,
+                   "personality_ac_text":  "High performance",
+                   "personality_dc_text":  "Balanced",
+                   "activation_tested":  false,
+                   "activation_note":  "NOT TESTED - activating would apply the plan to the primary machine (task section 7); see report 6.3 U-1"
+               },
+    "counts":  {
+                   "stored_subgroup_nodes":  6,
+                   "real_subgroups":  5,
+                   "pseudo_subgroup_personality":  1,
+                   "settings_recovered":  27,
+                   "settings_hidden":  22,
+                   "settings_visible":  5,
+                   "settings_with_verified_ac_dc":  27,
+                   "settings_matching_exactly":  27,
+                   "settings_differing_from_hp_default":  25,
+                   "settings_identical_to_hp_default":  2,
+                   "settings_unresolved":  0
+               },
+    "validation":  {
+                       "overall_status":  "PASS WITH ONE TESTED EXCEPTION",
+                       "isolation":  "NONE AVAILABLE - no VM/Sandbox on host; import-only, never activated, host active scheme verified unchanged",
+                       "items":  [
+                                     {
+                                         "id":  1,
+                                         "test":  "import shipped HoneV5.pow under original GUID",
+                                         "result":  "PASS",
+                                         "detail":  "exit 0, Imported Power Scheme Successfully"
+                                     },
+                                     {
+                                         "id":  2,
+                                         "test":  "active scheme unchanged by import",
+                                         "result":  "PASS",
+                                         "detail":  "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c before and after"
+                                     },
+                                     {
+                                         "id":  3,
+                                         "test":  "enumerate every visible setting",
+                                         "result":  "PASS",
+                                         "detail":  "powercfg /query, 28 visible settings"
+                                     },
+                                     {
+                                         "id":  4,
+                                         "test":  "enumerate every hidden setting",
+                                         "result":  "PASS",
+                                         "detail":  "powercfg /qh + registry enumeration, 27 stored pairs"
+                                     },
+                                     {
+                                         "id":  5,
+                                         "test":  "compare every subgroup and setting GUID",
+                                         "result":  "PASS",
+                                         "detail":  "27/27 identical, runtime vs artifact vs reconstruction"
+                                     },
+                                     {
+                                         "id":  6,
+                                         "test":  "compare every AC/DC value",
+                                         "result":  "PASS",
+                                         "detail":  "27/27 identical, both axes"
+                                     },
+                                     {
+                                         "id":  7,
+                                         "test":  "compare scheme metadata and GUID",
+                                         "result":  "PASS",
+                                         "detail":  "GUID identical; name V5 in reconstruction vs V4 in artifact (deliberate, D-1)"
+                                     },
+                                     {
+                                         "id":  8,
+                                         "test":  "confirm the imported scheme can be activated",
+                                         "result":  "NOT TESTED",
+                                         "detail":  "safety override - see report 6.3 U-1"
+                                     },
+                                     {
+                                         "id":  9,
+                                         "test":  "export the reconstructed scheme",
+                                         "result":  "PASS",
+                                         "detail":  "powercfg /export, exit 0"
+                                     },
+                                     {
+                                         "id":  10,
+                                         "test":  "round trip: delete, re-import, re-query, re-export",
+                                         "result":  "PASS",
+                                         "detail":  "re-import registry state identical to first import; re-export differs only in hive header bookkeeping (314 bytes)"
+                                     },
+                                     {
+                                         "id":  11,
+                                         "test":  "cleanup and restore host state",
+                                         "result":  "PASS",
+                                         "detail":  "test schemes deleted, active scheme still 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"
+                                     }
+                                 ]
+                   },
+    "evidence":  {
+                     "artifact_shipped":  {
+                                              "path":  "C:\\Users\\alanz\\AppData\\Local\\Programs\\Hone\\resources\\assets\\hone-resources\\HoneV5.pow",
+                                              "size":  12288,
+                                              "sha256":  "84BF2B26407801F4A8B9182177DCAB9C52FCC562E01283E427FA5C264D51C6EE",
+                                              "grade":  "VERIFIED-ARTIFACT",
+                                              "note":  ".pow is a regf hive; decoded offline"
+                                          },
+                     "runtime_hive_export":  {
+                                                 "path":  "C:\\Users\\alanz\\Documents\\Trae-CN\\temp_20261110_01\\runtime-lab\\exp\\k6ad89bg\\after\\CCS_Control.reg",
+                                                 "size":  30294622,
+                                                 "sha256":  "D8A01467E4D396DED7BC14019A0DE2B98AAD5E52E7174D281F2BB418A0B5583D",
+                                                 "grade":  "VERIFIED-RUNTIME-RECOVERED",
+                                                 "note":  "post-apply HKLM\\SYSTEM\\CurrentControlSet\\Control export; live scheme key contains 33 keys / 27 AC-DC pairs"
+                                             },
+                     "runtime_scheme_subtree":  {
+                                                    "path":  "C:\\Users\\alanz\\Documents\\Trae-CN\\temp_20261110_01\\runtime-lab\\analysis\\runtime-scheme-subtree.reg",
+                                                    "size":  17168,
+                                                    "sha256":  "4DBE4E6CF75533AEBE87B9BD22C4BFFB024AA9DAFAA4F490387D559C71F321EB",
+                                                    "note":  "extracted subtree of the live Hone scheme"
+                                                },
+                     "runtime_capture_card":  {
+                                                  "path":  "C:\\Users\\alanz\\Documents\\Trae-CN\\temp_20261110_01\\runtime-lab\\evidence\\k6ad89bg.card.md",
+                                                  "note":  "in-process import + activation, 12 rows independently observed"
+                                              },
+                     "query_outputs":  [
+                                           "C:\\Users\\alanz\\Documents\\Trae-CN\\temp_20261110_01\\runtime-lab\\analysis\\pp-query-imported.txt",
+                                           "C:\\Users\\alanz\\Documents\\Trae-CN\\temp_20261110_01\\runtime-lab\\analysis\\pp-qh-full.txt",
+                                           "C:\\Users\\alanz\\Documents\\Trae-CN\\temp_20261110_01\\runtime-lab\\analysis\\pp-reg-imported.txt",
+                                           "C:\\Users\\alanz\\Documents\\Trae-CN\\temp_20261110_01\\runtime-lab\\analysis\\pp-reg-renamed.txt",
+                                           "C:\\Users\\alanz\\Documents\\Trae-CN\\temp_20261110_01\\runtime-lab\\analysis\\pp-reg-roundtrip.txt",
+                                           "C:\\Users\\alanz\\Documents\\Trae-CN\\temp_20261110_01\\runtime-lab\\analysis\\pp-aliases.txt"
+                                       ]
+                 },
+    "reconstruction":  {
+                           "method":  "powercfg /import -\u003e powercfg /changename -\u003e powercfg /export",
+                           "commands":  [
+                                            "powercfg /import \"\u003cHone\u003e\\resources\\assets\\hone-resources\\HoneV5.pow\" 44444444-4444-4444-4444-444444444452",
+                                            "powercfg /changename 44444444-4444-4444-4444-444444444452 \"Hone Ultimate Power Plan V5\"",
+                                            "powercfg /export \"\u003cout\u003e\\Hone-Ultimate-Power-Plan-V5-Reconstructed.pow\" 44444444-4444-4444-4444-444444444452"
+                                        ],
+                           "deviations_from_artifact":  [
+                                                            "FriendlyName: artifact stores \"Hone Ultimate Power Plan V4\"; deliverable stores \"Hone Ultimate Power Plan V5\" (the name the scheme carries on a real system). Applied with powercfg /changename."
+                                                        ],
+                           "not_done":  [
+                                            "No activation on this host",
+                                            "No substitution of a generic Ultimate Performance / High performance plan",
+                                            "No invented settings; the plan deliberately has no PCIe, wireless, sleep or battery settings and none were added"
+                                        ]
+                       },
+    "scope":  {
+                  "in_pow":  "27 power-scheme settings + scheme metadata",
+                  "out_of_pow":  {
+                                     "category_2_registry":  [
+                                                                 "Control\\Power PlatformAoAcOverride=0",
+                                                                 "Control\\Power PerfBoostAtGuaranteed=1",
+                                                                 "Control\\Storage StorageD3InModernStandby=0",
+                                                                 "Control\\Power\\EnergyEstimation\\TaggedEnergy DisableTaggedEnergyLogging=1 / TelemetryMaxApplication=0 / TelemetryMaxTagPerApplication=0",
+                                                                 "Services\\stornvme\\Parameters\\Device IdlePowerMode=0",
+                                                                 "Services\\pci\\Parameters ASPMOptOut=1",
+                                                                 "Policies\\Microsoft\\Windows\\fssprov EncryptProtocol=0"
+                                                             ],
+                                     "category_3_services_tasks":  [
+                                                                       "Services DcomLaunch, RpcEptMapper, RpcSs, Schedule, SystemEventsBroker - Automatic + start",
+                                                                       "Task \\DisablePowerSaving created",
+                                                                       "Task \\Microsoft\\Windows\\Power Efficiency Diagnostics\\AnalyzeSystem disabled"
+                                                                   ],
+                                     "category_4_device":  [
+                                                               "7 PCI devices x (WDF WdfDirectedPowerTransitionEnable=0, IdleInWorkingState=0)",
+                                                               "NIC class 0012 PnPCapabilities 0x10 -\u003e 0x18"
+                                                           ],
+                                     "category_5_unrelated":  [
+                                                                  "3 WINEVT diagnostic channels Enabled=0",
+                                                                  "3 WMI Autologger diagnostic blocks deleted",
+                                                                  "3 WMI Security provider ACL entries removed",
+                                                                  "System32\\Microsoft-windows-sleepstudy-events.dll renamed to .dll.old",
+                                                                  "Session Manager\\Power HiberbootEnabled state blob rewritten"
+                                                              ]
+                                 }
+              },
+    "unresolved":  [
+                       {
+                           "id":  "U-1",
+                           "item":  "Activation of the reconstructed scheme",
+                           "status":  "NOT TESTED",
+                           "reason":  "task section 7 forbids applying the plan to the primary machine"
+                       },
+                       {
+                           "id":  "U-2",
+                           "item":  "powercfg /list does not enumerate the imported scheme on this build",
+                           "status":  "UNRESOLVED",
+                           "reason":  "scheme is present/queryable/exportable and a duplicatescheme plan is listed; shipped artifact behaves identically, so no fidelity loss"
+                       },
+                       {
+                           "id":  "U-3",
+                           "item":  "Intended hardware target of the plan",
+                           "status":  "UNKNOWN",
+                           "reason":  "artifact asserts no target"
+                       },
+                       {
+                           "id":  "U-4",
+                           "item":  "Any post-import scheme writes by Hone UI/HoneSvc",
+                           "status":  "UNKNOWN",
+                           "reason":  "none observed; snapshot-based evidence only"
+                       }
+                   ],
+    "discrepancies":  [
+                          {
+                              "id":  "D-1",
+                              "item":  "FriendlyName V4 in artifact vs V5 on system",
+                              "resolution":  "deliverable carries V5; V4 preserved here"
+                          },
+                          {
+                              "id":  "D-2",
+                              "item":  "earlier capture recorded ~12 setting rows, plan stores 27",
+                              "resolution":  "the 15 extra rows are hidden settings; diff-based capture under-reported"
+                          },
+                          {
+                              "id":  "D-3",
+                              "item":  "two processor settings render the same friendly name",
+                              "resolution":  "Microsoft resource collision (powrprof.dll,-1229 vs -1207); distinguished by GUID/alias"
+                          },
+                          {
+                              "id":  "D-4",
+                              "item":  "earlier claim that HoneV5.pow is not a real .pow",
+                              "resolution":  "incorrect; .pow exports are regf hives"
+                          },
+                          {
+                              "id":  "D-5",
+                              "item":  "tracker operation_count 48 vs 71 granular operations",
+                              "resolution":  "48 is group-level; 71 is granular"
+                          },
+                          {
+                              "id":  "D-6",
+                              "item":  "/list omission",
+                              "resolution":  "see U-2"
+                          }
+                      ],
+    "confidence":  {
+                       "stored_setting_set":  "HIGH - 27/27 agree across shipped hive, runtime hive export and reconstruction round trip",
+                       "plan_completeness":  "MEDIUM - inferred from the runtime state being fully explained by the artifact",
+                       "overall_claim":  "100% of the recovered power-scheme settings reproduce exactly; this is not a claim of 100% reconstruction of the whole Hone power optimisation"
+                   },
+    "files":  {
+                  "pow":  {
+                              "name":  "Hone-Ultimate-Power-Plan-V5-Reconstructed.pow",
+                              "size":  12288,
+                              "sha256":  "62AC159AB77F228D022CED2DAC447BF4B7371CFF9CFBE099742842FBB3B2A3BB",
+                              "magic":  "regf"
+                          },
+                  "report":  {
+                                 "name":  "Hone-Ultimate-Power-Plan-V5-Report.md",
+                                 "size":  30894,
+                                 "sha256":  "774B52EA00600EE09B4A52C67D19108699B4E74EF8132BA0925A24DCA3FA6946"
+                             },
+                  "comparison":  {
+                                     "name":  "Hone-Ultimate-Power-Plan-V5-Comparison.csv",
+                                     "size":  18445,
+                                     "sha256":  "82560C28A6F20DA62D8D00A539067A509FCA80B2D69E79C815C916283E1AC1BA",
+                                     "rows":  27
+                                 },
+                  "validation":  {
+                                     "name":  "Hone-Ultimate-Power-Plan-V5-Validation.txt",
+                                     "size":  38856,
+                                     "sha256":  "2A2497E5B79E6E953812EE1C587047A416E16497C0385D898D4E5359746FA55C"
+                                 }
+              }
+}

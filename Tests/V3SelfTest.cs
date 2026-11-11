@@ -381,6 +381,20 @@ internal static class V3SelfTest
         }
         else
             Lines.Add("[live] topology unavailable on this machine (recorded, not a test failure)");
+
+        var catalog = OptimizationCatalog.Build(null);
+        foreach (var id in new[] { "debloat", "v3-device-affinity" })
+        {
+            var opt = catalog.FirstOrDefault(o => o.Id == id);
+            if (opt is null) { Lines.Add($"[live] {id}: not registered"); continue; }
+            try
+            {
+                var d = opt.Detect();
+                Lines.Add($"[live] {id}: state={d.State} current='{d.CurrentState}' " +
+                          $"reason='{d.Reason}' selectable={d.Selectable}");
+            }
+            catch (Exception ex) { Lines.Add($"[live] {id}: detect threw {ex.GetType().Name}: {ex.Message}"); }
+        }
     }
 
     // ------------------------------------------------------------------ UI integration

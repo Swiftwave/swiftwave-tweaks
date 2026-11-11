@@ -1,0 +1,41 @@
+{
+  "languages": [
+    "en-us"
+  ],
+  "listings": [
+    {
+      "language": "en-us",
+      "shortDescription": "Windows 11 optimization and configuration utility with verified, reversible settings for power, gaming, startup and system cleanup.",
+      "description": "Swiftwave Tweaks is a Windows 11 desktop utility for conservative PC configuration. It inspects the current system, presents settings that can be changed safely, and verifies each change after applying it. Every modification is recorded so it can be reverted from inside the app.\n\nWhat it does:\n- Detects hardware, memory, graphics, storage, Windows build, power plan and network state.\n- Switches between available Windows power plans, with the previous plan recorded for rollback.\n- Configures supported gaming-related Windows settings such as Game DVR/Game Bar policy.\n- Manages startup entries listed in the documented Windows Run keys, with automatic backups and restore.\n- Adjusts supported power-saving settings for network adapters and, where installed, NVIDIA display power management through supported interfaces.\n- Provides cleanup suggestions and a diagnostics view that only changes settings when you confirm them.\n- Keeps local logs and rollback records under the user's local application data folder.\n\nWhat it does not do:\n- It does not modify anything without an explicit action.\n- It does not install drivers or Windows services.\n- It does not make unsupported system patches, and settings it cannot verify are reported as manual/unsupported rather than changed.\n\nChanges that require administrator rights trigger a standard Windows User Account Control prompt; the app itself runs as the current user.",
+      "productFeatures": [
+        "Conservative, verified Windows 11 configuration with explicit apply/revert for every setting",
+        "Power plan switching with previous-plan rollback",
+        "Gaming-related Windows settings such as Game DVR/Game Bar policy",
+        "Startup entry management with automatic backup and restore",
+        "Network adapter and NVIDIA power-management configuration where supported",
+        "Local activity log and rollback records"
+      ],
+      "searchTerms": [
+        "windows optimizer",
+        "power plan",
+        "startup manager",
+        "gaming settings",
+        "system configuration"
+      ],
+      "whatsNew": "Swiftwave Tweaks 2.0: reworked interface with optimization categories, per-setting status and rollback, modern toggle and scrollbar styling, and a single-instance launcher."
+    }
+  ],
+  "properties": {
+    "category": "Utilities & tools",
+    "privacyPolicyUrl": "",
+    "website": "https://github.com/Swiftwave/swiftwave-tweaks",
+    "supportContactInfo": "https://github.com/Swiftwave/swiftwave-tweaks/issues",
+    "dependsOnDriversOrNT": false,
+    "certificationNotes": "Swiftwave Tweaks runs as the current user (asInvoker). It does not install drivers or Windows services. Individual settings that require administrator rights launch a standard Windows UAC consent prompt (an elevated Windows PowerShell process) and apply only documented settings: powercfg power plans, supported Windows policy/registry values, network adapter power options, and NVIDIA driver profile settings where the driver is present. All such changes are logged under the user's local app data and can be reverted from the app. The MSI installs per machine, silently with /qn, creates one Start Menu shortcut and registers Add/Remove Programs information; uninstall removes the installed files and shortcut."
+  },
+  "availability": {
+    "pricing": "FREE",
+    "discoverability": "DISCOVERABLE",
+    "enableInFutureMarkets": true
+  }
+}

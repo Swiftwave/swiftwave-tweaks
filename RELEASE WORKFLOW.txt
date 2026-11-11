@@ -1,0 +1,265 @@
+# Swiftwave Tweaks: GitHub Release Workflow
+
+**Purpose:** This document defines the mandatory release procedure for all future Swiftwave Tweaks releases, from preparing source changes to publishing the GitHub Release and deploying the MSI to GitHub Pages.
+
+**Scope:** GitHub repository and GitHub Pages only.
+
+**Microsoft Store is explicitly outside the scope of this workflow.** Never access Partner Center, modify Store submissions, submit packages to Microsoft, or attempt to publish Store updates. The developer handles all Microsoft Store operations manually.
+
+## 1. Non-negotiable requirements
+
+- The entire workflow must remain free.
+- Never purchase certificates, subscriptions, or paid services.
+- Preserve the existing MSI distribution architecture.
+- Never overwrite an existing versioned GitHub Pages package.
+- Never reuse revoked GitHub credentials or tokens.
+- Never commit API keys, tokens, passwords, secrets, or private credentials.
+- Never ask the developer to disclose account passwords or MFA codes in chat.
+- Use the agent's built-in browser interface for interactive authentication whenever available.
+- Ask the developer to log in personally when authentication is required.
+- Never publish a release without explicit developer approval.
+- Never claim an operation succeeded without verifying it.
+
+## 2. Mandatory release information
+
+Before beginning a release, ask the developer for:
+
+1. The intended release version.
+2. The release title.
+3. The complete release description and version update notes.
+4. Confirmation that the current source changes are ready for release.
+
+Provide the following example for reference.
+
+### Example: Swiftwave Tweaks 2.0.1
+
+**Title:** Swiftwave Tweaks 2.0.1
+
+**Description:**
+
+Swiftwave Tweaks 2.0.1 introduces improvements to optimization reliability, system detection, and application stability.
+
+**What's changed**
+- Improved Windows configuration detection.
+- Refined optimization verification.
+- Fixed interface and reliability issues.
+- Updated internal components and diagnostics.
+
+**Notes**
+- Existing user preferences are preserved.
+- No unsupported hardware overclocking or Windows security-disabling functionality has been introduced.
+
+This is an example only. Never reuse it as the actual release description without developer approval.
+
+Do not proceed until the developer provides the actual release information.
+
+## 3. Repository inspection
+
+Before modifying anything:
+
+1. Inspect the GitHub repository and current branch.
+2. Read `release-store.ps1`.
+3. Read `.github/workflows/deploy-msi-pages.yml`.
+4. Inspect the installer configuration.
+5. Inspect the current project and installer version numbers.
+6. Inspect the latest GitHub Release.
+7. Inspect existing GitHub Pages deployments and versioned package URLs.
+8. Check for uncommitted or unpushed changes.
+
+Repository:
+
+`https://github.com/Swiftwave/swiftwave-tweaks`
+
+Do not overwrite unrelated developer changes.
+
+## 4. GitHub authentication and credentials
+
+The developer must be asked for GitHub authentication whenever required.
+
+### Browser authentication
+
+When an operation requires interactive GitHub authentication:
+
+1. Open the relevant GitHub page using the agent's built-in browser interface.
+2. Stop and notify the developer that authentication is required.
+3. Ask the developer to log in through that browser interface.
+4. Allow the developer to complete MFA or other verification themselves.
+5. Resume only after authentication is complete.
+
+Never ask for the developer's GitHub password or MFA code in chat.
+
+### API authentication
+
+When a GitHub API operation requires a Personal Access Token:
+
+1. Explain why the token is required.
+2. Identify the minimum required repository permissions.
+3. Ask the developer to provide or configure a new fine-grained token through a secure credential mechanism.
+4. Use the existing `GITHUB_TOKEN` environment-variable convention if supported.
+5. Never print or expose the token.
+6. Never store it in source code or commit it to GitHub.
+
+Restrict token access to `Swiftwave/swiftwave-tweaks`.
+
+Likely permissions, subject to inspection of the actual script:
+
+- Contents: Read and write.
+- Metadata: Read.
+- Actions: Read and write, if workflow dispatch is required.
+
+The previously revoked PAT must never be reused.
+
+If secure authentication cannot be established, stop and ask for assistance.
+
+## 5. Version updates and build
+
+After approval:
+
+1. Update all necessary version references.
+2. Update the changelog.
+3. Update release documentation.
+4. Ensure the Git tag follows `v<version>`.
+5. Build the self-contained x64 application.
+6. Build the MSI using the existing installer configuration.
+7. Validate architecture, version, filename, and package size.
+8. Test installation and uninstallation where practical.
+9. Verify that existing application functionality and rollback mechanisms remain intact.
+10. Ensure no secrets or temporary build artifacts are included.
+
+Do not proceed if validation fails.
+
+## 6. Commit and push all intended changes
+
+Before creating the release:
+
+1. Review the complete Git diff.
+2. Stage all intended source, installer, configuration, and documentation changes.
+3. Exclude credentials, generated temporary files, local settings, and unrelated artifacts.
+4. Create a descriptive commit.
+5. Push the commit to the existing GitHub repository and intended branch.
+6. Verify that the remote commit exists.
+
+The release must correspond to the exact source commit used to build the MSI.
+
+Do not release uncommitted changes.
+
+## 7. Create and publish the GitHub Release
+
+Use the existing release automation wherever possible.
+
+Expected procedure:
+
+1. Create a draft GitHub Release.
+2. Create the tag `v<version>`.
+3. Use the developer-approved title and description.
+4. Upload the validated MSI.
+5. Verify the uploaded asset's filename and byte size.
+6. Publish the GitHub Release.
+7. Verify that it appears on the repository's `/releases` page.
+8. Verify that the new release is marked as the latest release.
+
+Never overwrite an existing release or tag.
+
+If the version already exists, stop and ask the developer how to proceed.
+
+## 8. Deploy the new MSI to GitHub Pages
+
+Reuse the existing workflow:
+
+`.github/workflows/deploy-msi-pages.yml`
+
+The workflow should automatically mirror the published MSI into a new immutable versioned directory.
+
+Expected URL format:
+
+`https://swiftwave.github.io/swiftwave-tweaks/<version>/SwiftwaveTweaks-<version>-x64.msi`
+
+Example:
+
+`https://swiftwave.github.io/swiftwave-tweaks/2.0.1/SwiftwaveTweaks-2.0.1-x64.msi`
+
+Wait for GitHub Actions to finish.
+
+Verify:
+
+- Deployment succeeded.
+- The package URL returns HTTP 200.
+- The URL does not redirect.
+- The hosted package has the same byte size as the local MSI.
+- The hosted file is the intended release package.
+- The versioned URL did not previously exist.
+
+Never overwrite an existing versioned package.
+
+If deployment fails, stop and report the problem.
+
+## 9. Microsoft Store exclusion
+
+This workflow must not:
+
+- Open Microsoft Partner Center.
+- Authenticate to Microsoft accounts.
+- Request Microsoft credentials.
+- Access Microsoft Store Submission APIs.
+- Modify Store package URLs.
+- Create or update Store submissions.
+- Submit packages for certification.
+- Attempt to publish Store updates.
+
+The developer handles all Microsoft Store operations manually after receiving the new package URL.
+
+Do not extend this workflow into Microsoft Store automation.
+
+## 10. Final report
+
+After successfully completing the GitHub release, provide:
+
+- Released application version.
+- Git commit hash.
+- GitHub repository URL.
+- GitHub Release URL.
+- Confirmation that the release is the latest release.
+- GitHub Pages package URL.
+- MSI filename and byte size.
+- GitHub Actions deployment result.
+- Package URL verification result.
+
+Clearly distinguish between a published GitHub Release and a successfully deployed GitHub Pages package.
+
+The developer must receive the exact new package URL, ready to enter manually into Microsoft Partner Center.
+
+## 11. Existing infrastructure
+
+Inspect and reuse:
+
+- `release-store.ps1`
+- `.github/workflows/deploy-msi-pages.yml`
+- `installer/SwiftwaveTweaks.wxs`
+- `GameReadyOptimizer.csproj`
+- `release-assets/CHANGELOG.md`
+
+GitHub repository:
+
+`Swiftwave/swiftwave-tweaks`
+
+GitHub Pages host:
+
+`swiftwave.github.io/swiftwave-tweaks`
+
+Do not replace working infrastructure unnecessarily.
+
+## 12. Failure handling
+
+If any stage fails:
+
+1. Stop before proceeding to the next irreversible stage.
+2. Preserve existing published releases and package URLs.
+3. Report the exact failure and relevant non-sensitive diagnostics.
+4. Explain what action is required from the developer.
+5. Never fabricate a successful commit, release, or deployment.
+
+**Release sequence:**
+
+BUILD → VALIDATE → COMMIT → PUSH → CREATE RELEASE → UPLOAD MSI → PUBLISH RELEASE → DEPLOY GITHUB PAGES → VERIFY PACKAGE URL → REPORT TO DEVELOPER.
+
+**The workflow ends here. Microsoft Store updates are performed manually by the developer.**

@@ -1,0 +1,298 @@
+## 1. Optimize FPS & Input Lag (`5Q8oOtIH`)
+
+- BCD configuration
+  - Removed `useplatformclock`.
+  - Removed `useplatformtick`.
+  - Set `disabledynamictick=yes`.
+- Kernel scheduler/timer registry values under `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel`:
+  - `SerializeTimerExpiration=1`
+  - `EnableTickAccumulationFromAccountingPeriods=0`
+  - `TimerCheckFlags=0`
+  - `ReadyTimeTicks=6`
+  - `ScanLatencyTicks=20`
+  - `ThreadReadyCount=3`
+  - `BoostingPeriodMultiplier=5`
+  - `EnablePerCpuClockTickScheduling=1`
+  - `ForceForegroundBoostDecay=1`
+  - `ThreadDpcEnable=1`
+- Shutdown timeouts
+  - `WaitToKillServiceTimeout`: `5000` → `1500`.
+  - Created `WaitToKillAppTimeout=1500`.
+- Per-user desktop settings
+  - `HungAppTimeout=1000`.
+  - `WaitToKillAppTimeout=1500`.
+  - `LowLevelHooksTimeout=1000`.
+  - `AutoEndTasks=0`.
+- Mouse settings
+  - `RawMouseThrottleEnabled=1`.
+  - `RawMouseThrottleForced=1`.
+  - `RawMouseThrottleDuration=20`.
+  - `RawMouseThrottleLeeway=0`.
+- GPU power management
+  - Set `AllowDeepCStates=0` across enumerated GPU registry instances.
+- DirectX
+  - Set `DirectXUserGlobalSettings` to `SwapEffectUpgradeEnable=1;VRROptimizeEnable=0;`.
+  - Created `SwapEffectUpgradeCache=1`.
+- Explorer and application startup
+  - `StartupDelayInMSec=0`.
+  - `WaitforIdleState=0`.
+  - `IsPrelaunchEnabled=0`.
+  - `IsInputAppPreloadEnabled=0`.
+  - `AllowAutoGameMode=1`.
+- Background applications
+  - `GlobalUserDisabled=1`.
+  - `Policies\Microsoft\Windows\appprivacy\LetAppsRunInBackground=2`.
+- Multimedia
+  - Created `NoLazyMode=0`.
+- Services
+  - Ensured `DcomLaunch`, `RpcEptMapper`, `RpcSs`, `Schedule`, and `SystemEventsBroker` were Automatic and started.
+- Scheduled task
+  - Created `\LaunchSetTimerResolution`.
+  - Launched `SetTimerResolution.exe --resolution 5120` to maintain 0.5 ms timer resolution.
+
+## 2. Optimize Storage & Memory (`3WwEZo0M`)
+
+- Service-host configuration
+  - Changed `SvcHostSplitThresholdInKB` from `0x01000000` to `0xFFFFFFFF`.
+  - Created `SvcHostSplitDisable=1` on the enumerated service entries (49 reported; 45 names itemized).
+- NTFS configuration
+  - `NtfsDisable8dot3NameCreation`: `2` → `1`.
+  - `NtfsDisableLastAccessUpdate`: `0x80000002` → `1`.
+  - `NtfsMemoryUsage`: `0` → `2`.
+  - `NtfsMftZoneReservation`: `0` → `2`.
+  - `ScrubMode`: `2` → `1`.
+  - Created `NtfsAllowExtendedCharacterIn8dot3Name=1`.
+- Reserved Storage
+  - `ReserveManager\PassedPolicy`: `1` → `0`.
+  - `ReserveManager\MiscPolicyInfo`: `1` → `2`.
+
+## 3. Optimize Device Affinities (`RqbxUufM`)
+
+- Enumerated seven PCI device functions.
+- Created the following values under each device's `Interrupt Management\Affinity Policy`:
+  - `DevicePolicy=4`.
+  - `DevicePriority=3`.
+  - `AssignmentSetOverride`: 8-byte little-endian processor mask.
+- Captured device masks:
+  - Intel `8086:51ED`: CPU 2.
+  - NVIDIA `10DE:28A1`: CPUs 4 and 6.
+  - Intel `8086:A7A0`: CPUs 4 and 6.
+  - NVIDIA `10DE:22BE`: CPU 0.
+  - Intel `8086:51CA`: CPU 0.
+  - Realtek `10EC:8168`: CPU 0.
+  - Intel `8086:51F1`: CPU 0.
+- The exact device-selection filter was not recovered.
+
+## 4. Optimize Message Signal Interrupts (`oPu4x2Ef`)
+
+- Enumerated seven PCI device functions.
+- Created or modified `MSISupported=1` under each device's `Interrupt Management\MessageSignaledInterruptProperties`.
+- Deleted `MessageNumberLimit` specifically from NVIDIA device `10DE:28A1`.
+- Left the pre-existing `MessageNumberLimit` values on Realtek `10EC:8168` and Intel `8086:51F1` untouched.
+
+## 5. Optimize Network Performance (`XLSEdxVW`)
+
+- TCP/IP and network configuration
+  - Disabled ISATAP.
+  - Enabled RSS.
+  - Disabled non-SACK RTT resiliency.
+  - Set `initialRto=2000`.
+  - Set TCP supplemental congestion-control templates to BBRv2, resetting all six templates to NewReno first.
+  - Set custom initial congestion window to `10`.
+  - Set Ethernet current hop limit to `64`.
+  - Disabled IPv4 and IPv6 loopback large MTU.
+  - Enabled IP task offloading.
+  - Disabled UDP URO.
+  - Enabled UDP USO.
+  - Disabled TCP NetDMA.
+  - Disabled TCP DCA.
+- TCP registry settings
+  - `DisableTaskOffload=0`.
+  - `EnableTCPChimney=0`.
+  - `EnableTCPA=0`.
+  - `EnableDCA=0`.
+  - `TcpMaxConnectRetransmissions=2`.
+  - `TcpTimedWaitDelay=32`.
+  - `MultihopSets=15`.
+  - `SackOpts=1`.
+  - `Tcp1323Opts=3`.
+- IPv6
+  - Applied the same four offload-related registry values.
+  - Set `DisabledComponents=1` to disable IPv6 tunnel components.
+- DNS
+  - `NegativeCacheTime=0`.
+  - `NegativeSOACacheTime=0`.
+  - `NetFailureCacheTime=0`.
+  - `EnableAutoDoh=2`.
+- Other services and networking
+  - Created `Psched\TimerResolution=1`.
+  - Disabled the `lmhosts` service (`Start=4`).
+  - Set `iphlpsvc\config\IsatapState=3`.
+  - Created `Tcpip\qos\Do not use NLA=1`.
+  - Modified `LanmanServer\Parameters`:
+    - `IRPStackSize=30`.
+    - `SizReqBuf=17424`.
+    - `Size=3`.
+  - Created `BITS\SvcHostSplitDisable=0`.
+- NetBIOS
+  - Changed `NetbiosOptions` from `0` to `2` across six observed network-interface GUIDs.
+- NIC power management
+  - `MIMOPowerSaveMode=3`.
+  - `PowerSavingMode=0`.
+  - `EnableGreenEthernet=0`.
+  - `*EEE=0`.
+  - `EnableConnectedPowerGating=0`.
+  - `EnableDynamicPowerGating=0`.
+  - `EnableSavePowerNow=0`.
+  - `PnPCapabilities=0x18`.
+  - `*NicAutoPowerSaver=0`.
+- Adapter bindings
+  - Rewrote one adapter's `UpperBind`, removing `lltdio`, `MsLldp`, `rspndr`/`rsppndr`, and `Tcpip6`.
+- QoS
+  - Created approximately 452 per-application QoS policy entries.
+  - Assigned DSCP `46` (EF).
+  - Set throttle rate to `-1`.
+  - Applied wildcard protocol, port, and IP matching.
+  - Used a hardcoded list of game executable names.
+
+## 6. Disable Dynamic Interrupt Steering (`istk0001`)
+
+\- Created:
+
+- `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\kernel\InterruptSteeringFlags`
+- Type: `REG_DWORD`.
+- Value: `0`.
+
+## 7. Disable Windows Services (`PE9bgwi0`)
+
+- Changed the following service `Start` values to `4` (Disabled):
+  - `WalletService`: `3` → `4`.
+  - `SharedAccess`: `3` → `4`.
+  - `SEMgrSvc`: `3` → `4`.
+  - `Ndu`: `2` → `4`.
+  - `upnphost`: `3` → `4`.
+  - `PhoneSvc`: `3` → `4`.
+  - `AxInstSV`: `3` → `4`.
+- All seven services were already stopped when the changes were captured.
+
+## 8. Reduce Windows Background Activity (`9C0X9LiC`)
+
+- Services
+  - `WSearch`: `Start=4`.
+  - `PcaSvc`: `Start=4`.
+  - `WerSvc`: `Start=4`.
+  - `wercplsupport`: `Start=4`.
+- Scheduled tasks
+  - Disabled 34 Windows scheduled tasks across:
+    - Windows Error Reporting.
+    - Customer Experience Improvement Program.
+    - Feedback and Siuf.
+    - Application Experience.
+    - ApplicationData.
+    - Autochk.
+    - DiskDiagnostic and DiskFootprint.
+    - File Classification Infrastructure.
+    - Location.
+    - Maintenance.
+    - Provisioning.
+    - Maps.
+    - NlaSvc.
+    - Offline Files.
+    - Ras.
+    - Shell.
+    - SpacePort.
+    - Speech.
+    - User Profile Service.
+    - WCM.
+    - Windows Filtering Platform.
+    - Windows Media Sharing.
+    - Work Folders.
+    - Workplace Join.
+  - Changed task enabled states through the Task Scheduler API and corresponding TaskCache entries.
+- Windows Error Reporting
+  - Created `Disabled=1`.
+  - Created `DontSendAdditionalData=1`.
+  - Created `DontShowUI=1`.
+  - Created `LoggingDisabled=1`.
+  - Changed `Assert Filtering Policy\ReportAndContinue`: `1` → `0`.
+  - Changed `Consent\DefaultConsent`: `4` → `0`.
+  - Created machine policy values `Disabled=1` and `DontSendAdditionalData=1`.
+  - Created `pchealth\errorreporting\DoReport=0`.
+  - Created per-user policy `Disabled=1`.
+- Application Compatibility policies
+  - `AllowTelemetry=0`.
+  - `DisableEngine=1`.
+  - `DisablePCA=1`.
+  - `SbEnable=0`.
+  - `VDMDisallowed=1`.
+- Shutdown policy
+  - Created `AllowBlockingAppsAtShutdown=0`.
+- Driver reporting
+  - `DisableSendGenericDriverNotFoundToWER=1`.
+  - `DisableSendRequestAdditionalSoftwareToWER=1`.
+- Wireless Connectivity policies
+  - Created `DisableWcnUi=1`.
+  - Set `EnableRegistrars=0`.
+  - Set `DisableUPnPRegistrar=1`.
+  - Set `DisableInBand802DOT11Registrar=1`.
+  - Set `DisableFlashConfigRegistrar=1`.
+  - Set `DisableWPDRegistrar=1`.
+- Kernel
+  - Created `SeLpacEnableWatsonThrottling=0`.
+
+## 9. Enable Maximum Performance Power Mode (`k6ad89bg`)
+
+- Power scheme
+  - Imported and activated power scheme `44444444-4444-4444-4444-444444444452`.
+  - Registered it as `Hone Ultimate Power Plan V5`.
+  - Replaced the previously active scheme.
+- Power-plan settings
+
+| Setting                              | AC   | DC   |
+| ------------------------------------ | ---- | ---- |
+| Display timeout                      | 2700 | 90   |
+| Dimmed display brightness            | 50   | 40   |
+| Secondary NVMe idle timeout          | 4000 | 1000 |
+| Primary NVMe idle timeout            | 500  | 100  |
+| Core parking increase time           | 1    | 7    |
+| Performance when unparked            | 100  | 50   |
+| Heterogeneous short-thread policy    | 2    | 5    |
+| Core parking minimum cores           | 100  | 100  |
+| Parked performance state             | 1    | 1    |
+| Latency-sensitivity hint performance | 100  | 50   |
+| USB selective suspend                | 0    | 0    |
+| USB hub selective-suspend timeout    | 200  | 50   |
+
+- Platform and storage
+  - Created or set `PlatformAoAcOverride=0`.
+  - Created `PerfBoostAtGuaranteed=1`.
+  - Set `StorageD3InModernStandby=0`.
+  - Set `stornvme\Parameters\Device\IdlePowerMode=0`.
+  - Set `pci\Parameters\ASPMOptOut=1`.
+  - Changed a NIC's `PnPCapabilities` from `0x10` to `0x18`.
+- Energy telemetry
+  - `DisableTaggedEnergyLogging=1`.
+  - `TelemetryMaxApplication=0`.
+  - `TelemetryMaxTagPerApplication=0`.
+- WDF device power transitions
+  - On seven PCI devices, set:
+    - `WdfDirectedPowerTransitionEnable=0`.
+    - `IdleInWorkingState=0`.
+- ETW diagnostic channels
+  - Set `Enabled=0` for:
+    - `Microsoft-Windows-Kernel-Processor-Power/Diagnostic`.
+    - `Microsoft-Windows-SleepStudy/Diagnostic`.
+    - `Microsoft-Windows-UserModePowerService/Diagnostic`.
+- WMI
+  - Deleted three corresponding diagnostic Autologger blocks.
+  - Removed three WMI provider security ACL entries.
+- System file
+  - Renamed `Microsoft-windows-sleepstudy-events.dll` to `Microsoft-windows-sleepstudy-events.dll.old`.
+- Services
+  - Ensured `DcomLaunch`, `RpcEptMapper`, `RpcSs`, `Schedule`, and `SystemEventsBroker` were Automatic and started.
+- Scheduled tasks
+  - Created `\DisablePowerSaving`.
+  - Disabled `\Microsoft\Windows\Power Efficiency Diagnostics\AnalyzeSystem`.
+- Miscellaneous
+  - Created `fssprov\EncryptProtocol=0`.
+  - Rewrote a fast-startup/S0 state blob under `Session Manager\Power`.

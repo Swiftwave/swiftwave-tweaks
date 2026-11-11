@@ -3,11 +3,11 @@
   <!--
     Swiftwave Tweaks - Microsoft Store (MSI/EXE program) installer.
     Per-machine x64 MSI. Fully silent with /qn (required by Store certification).
-    ProductVersion follows the app's 3.0 versioning; MSI ignores the 4th field.
+    ProductVersion follows the app's 3.1 versioning; MSI ignores the 4th field.
   -->
   <Package Name="Swiftwave Tweaks"
            Manufacturer="Swiftwave"
-           Version="3.0.0"
+           Version="3.1.0"
            Scope="perMachine"
            Language="1033"
            Codepage="1252"

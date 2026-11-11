@@ -6,8 +6,8 @@ name: Deploy MSI to GitHub Pages
 #
 # Immutability rules (enforced by this workflow AND by release-store.ps1):
 #   * A versioned file that already exists on gh-pages is NEVER overwritten.
-#   * To ship a new build, publish a new release tag (e.g. v2.0.1) and bump the
-#     package version; the new file lands at /2.0.1/... and the old URL stays
+#   * To ship a new build, publish a new release tag (e.g. v3.0.1) and bump the
+#     package version; the new file lands at /3.0.1/... and the old URL stays
 #     byte-for-byte unchanged, as Microsoft certification requires.
 #
 # Triggers:
@@ -21,11 +21,11 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag containing the MSI asset (e.g. v2.0.1)'
+        description: 'Release tag containing the MSI asset (e.g. v3.0.1)'
         required: true
         type: string
       version:
-        description: 'Version path segment on GitHub Pages (e.g. 2.0.1)'
+        description: 'Version path segment on GitHub Pages (e.g. 3.0.1)'
         required: true
         type: string
       asset:
