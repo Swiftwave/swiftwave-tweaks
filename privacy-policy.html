@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Swiftwave Tweaks</title>
+<style>
+:root{color-scheme:light dark}
+body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.65;color:#1f2328;background:#fff}
+main{max-width:56rem;margin:0 auto;padding:2.5rem 1.25rem 4rem}
+h1{font-size:2rem;margin:.2rem 0 .5rem}
+h2{font-size:1.35rem;margin-top:2.2rem;border-bottom:1px solid #e1e4e8;padding-bottom:.35rem}
+h3{font-size:1.1rem;margin-top:1.6rem}
+.meta{color:#57606a;font-size:.95rem;margin-bottom:2rem}
+code{background:#f6f8fa;padding:.15em .4em;border-radius:6px;font-size:.92em;font-family:Consolas,Menlo,monospace}
+table{border-collapse:collapse;width:100%;margin:1rem 0;font-size:.93rem}
+th,td{border:1px solid #d0d7de;padding:.5rem .65rem;text-align:left;vertical-align:top}
+th{background:#f6f8fa}
+a{color:#0969da;text-decoration:none}a:hover{text-decoration:underline}
+li{margin:.3rem 0}
+hr{border:0;border-top:1px solid #e1e4e8;margin:2rem 0}
+strong{color:#111418}
+@media (prefers-color-scheme:dark){
+ body{color:#e6edf3;background:#0d1117}
+ h2,hr{border-color:#30363d}
+ code{background:#161b22}
+ th{background:#161b22}
+ th,td{border-color:#30363d}
+ a{color:#58a6ff}strong{color:#f0f6fc}.meta{color:#8b949e}
+}
+</style>
+</head>
+<body>
+<main>
+
+<h1>Privacy Policy — Swiftwave Tweaks</h1>
+<p class="meta"><strong>Effective date:</strong> 12 November 2026 &nbsp;·&nbsp; <strong>Last updated:</strong> 12 November 2026 &nbsp;·&nbsp; <strong>Applies to:</strong> Swiftwave Tweaks for Windows (x64), version 3.1.0 and later</p>
+
+<h2 id="summary">1. Summary</h2>
+<p>Swiftwave Tweaks is a local Windows desktop utility. It does not collect, transmit, sell, rent or share personal information.</p>
+<ul>
+<li>The application makes <strong>no network connections</strong>. There is no telemetry, analytics, advertising, crash reporting, account system, or automatic update check.</li>
+<li>Everything the application records stays on your own PC, inside your Windows user profile.</li>
+<li>Information is sent to a third party only if you personally choose to visit the project's GitHub pages in a web browser.</li>
+</ul>
+<p>The rest of this policy explains exactly what the application reads, what it stores, where it is stored, and how to remove it.</p>
+
+<h2 id="scope">2. Who this policy applies to</h2>
+<p>This policy applies to the Swiftwave Tweaks desktop application, its installer, and the copies distributed through GitHub Releases and GitHub Pages.</p>
+<p>It does <strong>not</strong> apply to:</p>
+<ul>
+<li>GitHub, which hosts the download pages and issue tracker and has its own privacy statement.</li>
+<li>Microsoft Windows, which operates independently of this application.</li>
+<li>Other software you install or run alongside Swiftwave Tweaks.</li>
+</ul>
+<p><strong>Publisher:</strong> Swiftwave Tweaks is published under the project name "Swiftwave". This policy does not claim that a separate registered company, partnership or other legal entity operates the project.</p>
+
+<h2 id="processing">3. Information the application processes</h2>
+<p>All processing described in this section happens <strong>on your device</strong>. None of it is transmitted anywhere.</p>
+
+<h3>3.1 System and hardware information</h3>
+<p>To show its dashboard and decide which optimizations are applicable, the application reads:</p>
+<ul>
+<li>Windows edition, version, build number and update revision.</li>
+<li>Processor name, core count and logical processor count.</li>
+<li>Graphics adapter name, driver version and driver date.</li>
+<li>Motherboard manufacturer and model.</li>
+<li>Installed memory total, plus per-module slot, capacity and speed.</li>
+<li>Drives: letter, volume label, model, bus type, total size and free space.</li>
+<li>Monitors: device name, resolution, current refresh rate and maximum refresh rate.</li>
+<li>Active power plan name and identifier.</li>
+<li>Windows settings relevant to gaming and power, such as hardware-accelerated GPU scheduling, Game DVR, Game Bar and Game Mode state.</li>
+<li>Current process count and system uptime.</li>
+<li>CPU load and physical memory usage, sampled once per second while the dashboard is open.</li>
+<li>NVIDIA GPU name, driver version, VRAM, temperature, power draw and Resizable BAR state, read through the locally installed <code>nvidia-smi</code> tool when an NVIDIA GPU is present.</li>
+<li>Network adapter descriptions and supported power-saving capabilities.</li>
+<li>Plug-and-play device identifiers used to match devices to drivers.</li>
+</ul>
+<p>This information is used in memory to render the interface and evaluate optimization availability. Only the small subset described in section 4 is written to disk.</p>
+<p>The application does <strong>not</strong> read your documents, photos, emails, browser history, passwords, keystrokes, clipboard, camera, microphone or location.</p>
+
+<h3>3.2 Application preferences</h3>
+<p>When you change a setting in the app, the following preferences are saved:</p>
+<ul>
+<li>Whether the welcome/onboarding sequence has been completed.</li>
+<li>Whether the app starts minimized when launched by Windows at sign-in.</li>
+<li>Whether closing the window keeps the app running in the notification area.</li>
+<li>Whether the app is registered to start with Windows.</li>
+<li>Your selected colour theme (Light, Dark, Swiftwave default, or follow Windows).</li>
+</ul>
+
+<h3>3.3 Change records and rollback history</h3>
+<p>Every optimization the app applies is recorded so it can be verified and reversed. These records contain:</p>
+<ul>
+<li>An identifier for the optimization and a transaction identifier.</li>
+<li>The timestamp of the change and whether it was applied, rolled back, or failed to roll back.</li>
+<li>The Windows setting that was changed and its previous and new values (for example a registry value or a scheduled-task state).</li>
+</ul>
+<p>These records describe <strong>system configuration</strong>, not personal content. They are what allow the app to restore your previous settings.</p>
+
+<h3>3.4 Startup entries</h3>
+<p>The startup manager lists entries from the standard Windows startup registry locations. For entries not owned by Swiftwave Tweaks, it reads the entry name and command line so it can display and classify them.</p>
+<p>If you disable another program's startup entry through the app, its original name, command and value type are backed up in your own registry so the entry can be restored.</p>
+
+<h3>3.5 Process information</h3>
+<p>The Fortnite-specific optimization watches for the process named <code>FortniteClient-Win64-Shipping</code> so it can apply a CPU affinity setting when the game launches. It reads the process name and identifier only. It does not inspect game files, game accounts or gameplay data.</p>
+
+<h3>3.6 Single-instance coordination</h3>
+<p>A second launch of the app signals the already-running instance through a local, session-scoped named pipe. The pipe name includes your Windows user name and session identifier, and is used only on your own machine to bring the existing window to the front. It is not an internet connection and carries no personal data beyond an activation signal.</p>
+
+<h2 id="storage">4. Information stored on your device</h2>
+<table>
+<tr><th>Location</th><th>Contents</th><th>When it exists</th></tr>
+<tr><td><code>%LOCALAPPDATA%\SwiftwaveTweaks\preferences.json</code></td><td>The preferences listed in section 3.2</td><td>After the app saves a setting</td></tr>
+<tr><td><code>%LOCALAPPDATA%\SwiftwaveTweaks\journal.jsonl</code></td><td>Append-only transaction journal of applied, rolled-back and failed changes, including previous and new setting values</td><td>After the first optimization is applied</td></tr>
+<tr><td><code>%LOCALAPPDATA%\SwiftwaveTweaks\rollback.json</code></td><td>Rollback entries: optimization name, previous state and timestamp</td><td>After the first verified optimization</td></tr>
+<tr><td><code>%LOCALAPPDATA%\SwiftwaveTweaks\logs\activity.log</code></td><td>Diagnostic log described in section 7</td><td>When the app logs an event</td></tr>
+<tr><td><code>%LOCALAPPDATA%\SwiftwaveTweaks\logs\activity.old.log</code></td><td>The previous log after rotation</td><td>When the active log exceeds 5 MB</td></tr>
+<tr><td><code>%LOCALAPPDATA%\SwiftwaveTweaks\FortniteAffinity.ps1</code></td><td>The watcher script for the Fortnite optimization</td><td>Only if you enable that optimization</td></tr>
+<tr><td><code>%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Swiftwave Fortnite Affinity.lnk</code></td><td>A per-user Startup shortcut that runs the watcher</td><td>Only if you enable that optimization</td></tr>
+<tr><td><code>%LOCALAPPDATA%\SwiftwaveTweaks\v3-selftest.txt</code> and <code>ui-selftest.txt</code></td><td>Self-test reports</td><td>Only if the app is started with its diagnostic self-test flags</td></tr>
+<tr><td><code>%TEMP%\SwiftwaveTweaks\swiftwave-ultimate-&lt;id&gt;.pow</code></td><td>A temporary copy of the bundled power plan, used while importing it</td><td>Only during the power-plan import, then deleted</td></tr>
+<tr><td><code>%TEMP%\swt-elev-&lt;id&gt;.txt</code></td><td>Output captured from an elevated PowerShell operation</td><td>Only during that operation, then deleted</td></tr>
+</table>
+<p>The application also writes registry data that is part of its normal operation:</p>
+<ul>
+<li><code>HKCU\Software\Microsoft\Windows\CurrentVersion\Run</code> — one value named <code>SwiftwaveTweaks</code>, present only while "start with Windows" is enabled.</li>
+<li><code>HKCU\Software\SwiftwaveTweaks\StartupBackup</code> — backups of startup entries you disable through the app.</li>
+</ul>
+<p>In addition, the optimizations you explicitly choose modify the specific Windows settings they describe, such as power plans, gaming policy values, network adapter power options, device interrupt and affinity settings, and NVIDIA driver profile settings. These are the product's intended function and are recorded so they can be reverted.</p>
+
+<h2 id="network">5. Network communications and third-party services</h2>
+<p><strong>The application performs no network communication.</strong> It contains no code that opens an internet connection, and it does not check for updates automatically.</p>
+<p>Specifically, the app does not:</p>
+<ul>
+<li>Send telemetry, usage statistics, diagnostics or crash reports.</li>
+<li>Contact an advertising, analytics or attribution service.</li>
+<li>Require or support a user account, sign-in or licence server.</li>
+<li>Download updates, content, drivers or configuration.</li>
+<li>Connect to GitHub, Microsoft or NVIDIA on your behalf.</li>
+</ul>
+<p>Third-party components that may appear in or alongside the application:</p>
+<ul>
+<li><strong>Microsoft .NET runtime and Windows APIs</strong> — included with the self-contained build. These are used locally and are not configured by this app to transmit data.</li>
+<li><strong>NvAPIWrapper</strong> — an open-source library used to read and write supported NVIDIA driver profile settings through the locally installed NVIDIA driver. It does not transmit data.</li>
+<li><strong>GitHub</strong> — the distribution channel. If you open a release page, the project website, or the issue tracker in a browser, GitHub processes that visit under its own privacy statement. Downloading the installer is your own action; the application is not involved.</li>
+</ul>
+<p>The repository also contains maintainer-only release scripts that contact the GitHub API to publish releases. Those scripts are not part of the installed application and never run on a user's device.</p>
+<p>Windows itself may perform network activity for its own features. That activity is controlled by Windows and Microsoft, not by Swiftwave Tweaks.</p>
+
+<h2 id="cookies">6. Cookies, tracking and advertising</h2>
+<p>The application sets no cookies, uses no tracking pixels, generates no advertising identifiers, and contains no advertising or profiling code.</p>
+
+<h2 id="logging">7. Diagnostic information and logging</h2>
+<p>Swiftwave Tweaks keeps a plain-text activity log at <code>%LOCALAPPDATA%\SwiftwaveTweaks\logs\activity.log</code>.</p>
+<p>The log records operational events such as:</p>
+<ul>
+<li>Which optimization was applied, verified, rolled back, or failed.</li>
+<li>Error messages produced by Windows, PowerShell or the NVIDIA driver.</li>
+<li>Cleanup results, such as megabytes reclaimed and files skipped.</li>
+<li>Startup registration and restore-point outcomes.</li>
+</ul>
+<p>Log entries include a timestamp and a short description. They are written for troubleshooting on your own machine. <strong>Logs are never uploaded, and there is no automatic log submission feature.</strong></p>
+<p>The active log is rotated to <code>activity.old.log</code> when it exceeds 5 MB, and only one previous log is kept, so log storage is bounded.</p>
+
+<h2 id="cleanup">8. Cleanup and deletion features</h2>
+<p>The cleanup tool deletes files only after you explicitly confirm the action, and only in these locations:</p>
+<ul>
+<li>Your per-user temporary folder (<code>%TEMP%</code>).</li>
+<li>The Windows temporary folder (<code>C:\Windows\Temp</code>), which requires administrator approval.</li>
+<li>The Recycle Bin, for all drives.</li>
+</ul>
+<p>The tool does not touch documents, downloads, games, application data, browser profiles or Windows system files. Because emptying the Recycle Bin is permanent, treat any pending cleanup action as irreversible before you confirm it.</p>
+
+<h2 id="retention">9. Data retention and deletion</h2>
+<p>Local records are kept until you remove them:</p>
+<ul>
+<li>Preferences, journal, rollback history, logs and the Fortnite watcher script remain under <code>%LOCALAPPDATA%\SwiftwaveTweaks</code> until that folder is deleted.</li>
+<li>Temporary files created during an operation are deleted by the app when the operation finishes.</li>
+<li>Uninstalling the application removes the installed program and its Start Menu shortcut. <strong>It does not delete <code>%LOCALAPPDATA%\SwiftwaveTweaks</code></strong>, so your rollback history remains available if you reinstall.</li>
+</ul>
+<p>To delete everything the application has stored:</p>
+<ol>
+<li>Turn off any optimizations you want to reverse first, so the original Windows settings are restored.</li>
+<li>Delete the folder <code>%LOCALAPPDATA%\SwiftwaveTweaks</code>.</li>
+<li>If you enabled the Fortnite optimization, also delete <code>Swiftwave Fortnite Affinity.lnk</code> from your Startup folder.</li>
+<li>Optionally remove <code>HKCU\Software\SwiftwaveTweaks</code> if you used the startup manager.</li>
+</ol>
+<p>Because no data is transmitted, deletion on your device is complete deletion. There is no server-side copy to request.</p>
+
+<h2 id="security">10. Data security</h2>
+<ul>
+<li>All application data remains on your device. There is no database, cloud storage or remote account to breach.</li>
+<li>Files are stored inside your Windows user profile and are protected by the access controls Windows applies to that profile. The application does not add its own encryption to these files.</li>
+<li>The application runs with administrator rights because changing system settings requires them. It requests administrator approval through the standard Windows User Account Control prompt.</li>
+<li>Before the first elevated change in a session, the app asks Windows to create a System Restore checkpoint where System Protection is enabled, so you have an additional recovery path.</li>
+<li>The app verifies changes after applying them and records enough information to revert them.</li>
+</ul>
+<p>No method of storage is perfectly secure. You should protect your Windows account with a password or PIN and keep your device physically secure.</p>
+
+<h2 id="children">11. Children's privacy</h2>
+<p>Swiftwave Tweaks is a system configuration utility intended for general PC users. It is not directed to children, and it does not knowingly collect information from anyone, including children under 13. Because the application collects and transmits no personal information, there is no children's data to delete; removing the local folder described in section 9 removes all stored records.</p>
+
+<h2 id="transfers">12. International data transfers</h2>
+<p>There are none. The application does not transfer data across borders because it does not transmit data at all.</p>
+
+<h2 id="choices">13. Your choices and rights</h2>
+<p>You control the application's data directly:</p>
+<ul>
+<li>Every optimization can be reverted from inside the app, which restores the recorded previous values.</li>
+<li>Preferences can be changed or reset at any time.</li>
+<li>All stored records can be deleted by removing the folder in section 9.</li>
+<li>The app can be uninstalled at any time through Windows Settings or Apps &amp; Features.</li>
+</ul>
+<p>Where data-protection law grants you rights of access, correction, deletion, restriction or objection, those rights concern data held by an organisation. Swiftwave Tweaks holds no such data about you, so the practical exercise of these rights is the local deletion described above.</p>
+
+<h2 id="changes">14. Changes to this policy</h2>
+<p>This policy may be updated when the application's behaviour changes. The revised version will be published at the same public URL with a new "Last updated" date. If a future version of the application ever adds a feature that transmits data, this policy will be updated before or when that feature ships, and the change will be described here.</p>
+<p>Policy version: 1.0</p>
+
+<h2 id="contact">15. Contact</h2>
+<p>Questions about this policy or the application's data handling:</p>
+<ul>
+<li><strong>Issue tracker:</strong> <a href="https://github.com/Swiftwave/swiftwave-tweaks/issues">github.com/Swiftwave/swiftwave-tweaks/issues</a></li>
+<li><strong>Project page:</strong> <a href="https://github.com/Swiftwave/swiftwave-tweaks">github.com/Swiftwave/swiftwave-tweaks</a></li>
+</ul>
+<p>The issue tracker is the official contact channel for privacy questions about this application.</p>
+
+</main>
+</body>
+</html>
